@@ -178,6 +178,28 @@ Chart instance in `useRef`. Y-axis: 4 ticks, bytes/s format. X-axis: hidden.
 
 Variants in `src/components/ui/Button.tsx`. Disabled state via HTML `disabled` prop.
 
+### Toast
+
+Use the shared toast system for transient/global feedback instead of ad-hoc banners.
+
+- UI component host: `src/components/ui/Toast.tsx` (`Toast`, `ToastHost`)
+- Hook API: `src/hooks/useToast.ts`
+- State/actions: `src/store/index.ts` (`showToast`, `removeToast`)
+
+```tsx
+const { showSuccess, showError, showPersistent } = useToast()
+
+showSuccess('Saved settings')
+showError('Failed to update interval')
+showPersistent('info', 'Background job is running')
+```
+
+Behavior:
+- `info` and `success` toasts auto-dismiss after **3 seconds** by default.
+- `error` toasts auto-dismiss after **15 seconds** by default.
+- Persistent toasts are supported via `showPersistent(...)` or by setting `autoCloseMs: null`.
+- All toasts are manually dismissible via the close button.
+
 ### NcduTree / NcduTreeNode
 
 Collapsible directory tree. `NcduTreeNode` lazy-renders children on first expand:

@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Card } from '@/components/ui/Card'
 import { CardTitle } from '@/components/ui/CardTitle'
 import { Button } from '@/components/ui/Button'
+import { useToast } from '@/hooks/useToast'
 import type { PortListener } from '@/types/api'
 
 interface PortsResponse {
@@ -11,27 +12,31 @@ interface PortsResponse {
 
 export default function PortsPage() {
   const { t } = useTranslation()
+  const { showSuccess, showError } = useToast()
   const [listeners, setListeners] = useState<PortListener[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [killingPort, setKillingPort] = useState<number | null>(null)
+  const loadErrorNotifiedRef = useRef(false)
 
   const fetchPorts = useCallback(async () => {
     try {
-      setError('')
       const res = await fetch('/api/ports')
       if (!res.ok) {
         throw new Error('failed to fetch ports')
       }
       const payload = await res.json() as PortsResponse
       setListeners(payload.listeners ?? [])
+      loadErrorNotifiedRef.current = false
     } catch (err) {
       console.error('Failed to fetch ports:', err)
-      setError(t('ports.loadError'))
+      if (!loadErrorNotifiedRef.current) {
+        showError(t('ports.loadError'))
+        loadErrorNotifiedRef.current = true
+      }
     } finally {
       setLoading(false)
     }
-  }, [t])
+  }, [t, showError])
 
   useEffect(() => {
     fetchPorts()
@@ -63,17 +68,17 @@ export default function PortsPage() {
     }
 
     setKillingPort(port)
-    setError('')
     try {
       const res = await fetch(`/api/ports/${port}`, { method: 'DELETE' })
       if (!res.ok) {
         const body = await res.json().catch(() => null) as { error?: string } | null
         throw new Error(body?.error || 'failed to kill process')
       }
+      showSuccess(t('ports.killSuccess', { port }))
       await fetchPorts()
     } catch (err) {
       console.error('Failed to kill port:', err)
-      setError(t('ports.killError'))
+      showError(t('ports.killError'))
     } finally {
       setKillingPort(null)
     }
@@ -92,10 +97,6 @@ export default function PortsPage() {
       </Card>
 
       <Card>
-        {error && (
-          <div className="mb-3 text-xs text-accent-red">{error}</div>
-        )}
-
         {loading ? (
           <p className="text-xs font-mono text-text-secondary">{t('ports.loading')}</p>
         ) : groupedByPort.length === 0 ? (

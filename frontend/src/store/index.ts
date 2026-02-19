@@ -28,6 +28,19 @@ interface ServerInfoState {
   serverInfo: ServerInfo | null
 }
 
+export type ToastVariant = 'info' | 'success' | 'error'
+
+export interface ToastItem {
+  id: string
+  message: string
+  variant: ToastVariant
+  autoCloseMs: number | null
+}
+
+interface ToastState {
+  toasts: ToastItem[]
+}
+
 interface PreferencesState {
   theme: Theme
   language: Language
@@ -38,7 +51,7 @@ interface PreferencesState {
   ncduCacheTtlSec: number
 }
 
-export interface AppState extends MetricsState, NcduState, ConnectionState, ServerInfoState, PreferencesState {
+export interface AppState extends MetricsState, NcduState, ConnectionState, ServerInfoState, PreferencesState, ToastState {
   // Metrics actions
   setSnapshot: (snapshot: Snapshot) => void
 
@@ -61,6 +74,10 @@ export interface AppState extends MetricsState, NcduState, ConnectionState, Serv
   setFrozen: (frozen: boolean) => void
   setUpdateIntervalMs: (ms: number) => void
   setNcduCacheTtlSec: (sec: number) => void
+
+  // Toast actions
+  showToast: (toast: Omit<ToastItem, 'id'> & { id?: string }) => void
+  removeToast: (id: string) => void
 }
 
 const HISTORY_LENGTH = 60
@@ -83,6 +100,7 @@ export const useStore = create<AppState>()(
       isScanning: false,
       isConnected: false,
       serverInfo: null,
+      toasts: [],
       theme: (localStorage.getItem('theme') as Theme) ?? 'dark',
       language: (localStorage.getItem('language') as Language) ?? 'en',
       defaultScanPath: (localStorage.getItem('defaultScanPath')) ?? '/',
@@ -173,6 +191,20 @@ export const useStore = create<AppState>()(
         s.ncduCacheTtlSec = next
         localStorage.setItem('ncduCacheTtlSec', String(next))
         localStorage.removeItem('ncduCacheTtlMs')
+      }),
+
+      showToast: (toast) => set((s) => {
+        const id = toast.id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+        s.toasts.push({
+          id,
+          message: toast.message,
+          variant: toast.variant,
+          autoCloseMs: toast.autoCloseMs,
+        })
+      }),
+
+      removeToast: (id) => set((s) => {
+        s.toasts = s.toasts.filter((toast) => toast.id !== id)
       }),
     })),
   ),

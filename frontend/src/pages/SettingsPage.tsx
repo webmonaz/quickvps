@@ -4,6 +4,7 @@ import { useStore } from '@/store'
 import { Card } from '@/components/ui/Card'
 import { CardTitle } from '@/components/ui/CardTitle'
 import { Button } from '@/components/ui/Button'
+import { useToast } from '@/hooks/useToast'
 import type { Theme, Language } from '@/store'
 
 const FONT_SIZES = [
@@ -17,6 +18,7 @@ const FONT_SIZES = [
 
 export default function SettingsPage() {
   const { t } = useTranslation()
+  const { showSuccess, showError } = useToast()
 
   const theme           = useStore((s) => s.theme)
   const language        = useStore((s) => s.language)
@@ -51,13 +53,14 @@ export default function SettingsPage() {
   function handleSavePath() {
     setDefaultScanPath(pathInput.trim() || '/')
     setSaved(true)
+    showSuccess(t('settings.defaultScanPathSaved'))
     setTimeout(() => setSaved(false), 1500)
   }
 
   async function handleSaveInterval() {
     const parsed = Number(intervalInput)
     if (!Number.isFinite(parsed) || parsed <= 0) {
-      setIntervalState('error')
+      showError(t('settings.invalidInterval'))
       return
     }
 
@@ -74,19 +77,21 @@ export default function SettingsPage() {
       })
       if (!res.ok) throw new Error('failed to save interval')
       setIntervalState('saved')
+      showSuccess(t('settings.updateIntervalSaved'))
       setTimeout(() => setIntervalState('idle'), 1500)
     } catch (err) {
       console.error('Failed to update interval:', err)
       setUpdateIntervalMs(prev)
       setIntervalInput(String(prev))
       setIntervalState('error')
+      showError(t('settings.updateIntervalFailed'))
     }
   }
 
   async function handleSaveCacheTtl() {
     const parsed = Number(cacheTtlInput)
     if (!Number.isFinite(parsed) || parsed <= 0) {
-      setCacheTtlState('error')
+      showError(t('settings.invalidCacheTtl'))
       return
     }
 
@@ -103,12 +108,14 @@ export default function SettingsPage() {
       })
       if (!res.ok) throw new Error('failed to save ncdu cache ttl')
       setCacheTtlState('saved')
+      showSuccess(t('settings.ncduCacheTtlSaved'))
       setTimeout(() => setCacheTtlState('idle'), 1500)
     } catch (err) {
       console.error('Failed to update ncdu cache ttl:', err)
       setNcduCacheTtlSec(prev)
       setCacheTtlInput(String(prev))
       setCacheTtlState('error')
+      showError(t('settings.ncduCacheTtlFailed'))
     }
   }
 
@@ -221,9 +228,6 @@ export default function SettingsPage() {
             <Button variant="primary" onClick={handleSaveInterval}>
               {intervalState === 'saved' ? t('settings.saved') : t('settings.apply')}
             </Button>
-            {intervalState === 'error' && (
-              <span className="text-xs text-accent-red">{t('settings.invalidInterval')}</span>
-            )}
           </div>
         </div>
       </Card>
@@ -251,9 +255,6 @@ export default function SettingsPage() {
             <Button variant="primary" onClick={handleSaveCacheTtl}>
               {cacheTtlState === 'saved' ? t('settings.saved') : t('settings.apply')}
             </Button>
-            {cacheTtlState === 'error' && (
-              <span className="text-xs text-accent-red">{t('settings.invalidCacheTtl')}</span>
-            )}
           </div>
         </div>
 

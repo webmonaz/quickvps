@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { Sidebar } from './Sidebar'
 import { ConnectionBanner } from './ConnectionBanner'
 import { FloatingFreezeButton } from './FloatingFreezeButton'
+import { ToastHost } from '@/components/ui/Toast'
 
 interface AppShellProps {
   children: React.ReactNode
@@ -17,6 +18,7 @@ export const AppShell = memo(function AppShell({ children }: AppShellProps) {
         </main>
       </div>
       <FloatingFreezeButton />
+      <ToastHost />
       <ConnectionBanner />
     </div>
   )

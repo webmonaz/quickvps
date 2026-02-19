@@ -66,6 +66,7 @@ frontend/src/components/metrics/NetworkTable.tsx     # Interface table
 frontend/src/components/metrics/DiskSection.tsx      # Disk cards grid
 frontend/src/components/metrics/DiskIOSection.tsx    # Disk I/O chart
 frontend/src/components/storage/StorageAnalyzer.tsx  # ncdu UI
+frontend/src/components/ui/Toast.tsx                 # shared global toast + host
 frontend/src/pages/DashboardPage.tsx                 # / route — assembles all sections
 frontend/src/App.tsx                                 # BrowserRouter + hooks wiring
 frontend/tailwind.config.ts                          # design tokens → Tailwind classes
@@ -139,6 +140,8 @@ POST /api/ncdu/scan → runner.Start(path)
 - Chart.js instances live in `useRef`. Update imperatively with `chart.update('none')` — never put chart data in React state.
 - Zustand selectors must be narrow — never `useStore(s => s.snapshot)` directly. See selector patterns in `docs/DESIGN_SYSTEM.md`.
 - All components: named export + `React.memo`. UI-only components in `components/ui/` are prop-only. Domain components in `components/metrics/` read from the store.
+- Reuse shared UI primitives from `frontend/src/components/ui/` before creating new local variants (buttons, cards, toasts, status dots, spinners).
+- Toast conventions: prefer `useToast()` for user feedback; default durations are 3s (`info`/`success`) and 15s (`error`), with persistent mode supported.
 
 ## Zustand selector patterns (critical — prevents re-render loops)
 
