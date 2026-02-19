@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { Header } from './Header'
+import { Sidebar } from './Sidebar'
 import { ConnectionBanner } from './ConnectionBanner'
 
 interface AppShellProps {
@@ -8,11 +8,13 @@ interface AppShellProps {
 
 export const AppShell = memo(function AppShell({ children }: AppShellProps) {
   return (
-    <div className="flex flex-col min-h-screen bg-bg-primary text-text-primary">
-      <Header />
-      <main className="flex-1 p-4 max-w-[1600px] mx-auto w-full">
-        {children}
-      </main>
+    <div className="flex bg-bg-primary text-text-primary">
+      <Sidebar />
+      <div className="flex flex-col flex-1 min-w-0 min-h-screen">
+        <main className="flex-1 p-4">
+          {children}
+        </main>
+      </div>
       <ConnectionBanner />
     </div>
   )

@@ -15,6 +15,7 @@ function AppRoutes() {
   const onNcduReady = useCallback(() => { fetchStatus() }, [fetchStatus])
   const theme = useStore((s) => s.theme)
   const language = useStore((s) => s.language)
+  const fontSize = useStore((s) => s.fontSize)
   const { i18n } = useTranslation()
 
   // Apply persisted theme class on mount and changes
@@ -25,6 +26,11 @@ function AppRoutes() {
       document.documentElement.classList.remove('light')
     }
   }, [theme])
+
+  // Apply persisted font size on mount and changes
+  useEffect(() => {
+    document.documentElement.style.fontSize = fontSize + 'px'
+  }, [fontSize])
 
   // Sync i18n language with store
   useEffect(() => {

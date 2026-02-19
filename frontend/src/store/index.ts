@@ -32,6 +32,7 @@ interface PreferencesState {
   theme: Theme
   language: Language
   defaultScanPath: string
+  fontSize: number
 }
 
 export interface AppState extends MetricsState, NcduState, ConnectionState, ServerInfoState, PreferencesState {
@@ -53,6 +54,7 @@ export interface AppState extends MetricsState, NcduState, ConnectionState, Serv
   setTheme: (theme: Theme) => void
   setLanguage: (language: Language) => void
   setDefaultScanPath: (path: string) => void
+  setFontSize: (size: number) => void
 }
 
 const HISTORY_LENGTH = 60
@@ -78,6 +80,7 @@ export const useStore = create<AppState>()(
       theme: (localStorage.getItem('theme') as Theme) ?? 'dark',
       language: (localStorage.getItem('language') as Language) ?? 'en',
       defaultScanPath: (localStorage.getItem('defaultScanPath')) ?? '/',
+      fontSize: Number(localStorage.getItem('fontSize')) || 14,
 
       // Actions
       setSnapshot: (snapshot) =>
@@ -125,6 +128,12 @@ export const useStore = create<AppState>()(
       setDefaultScanPath: (path) => set((s) => {
         s.defaultScanPath = path
         localStorage.setItem('defaultScanPath', path)
+      }),
+
+      setFontSize: (size) => set((s) => {
+        s.fontSize = size
+        localStorage.setItem('fontSize', String(size))
+        document.documentElement.style.fontSize = size + 'px'
       }),
     })),
   ),

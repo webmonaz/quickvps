@@ -67,6 +67,8 @@
     "defaultScanPath": "Default Scan Path",
     "defaultScanPathHint": "Pre-fills the scan path when you open the Storage Analyzer",
     "save": "Save",
-    "saved": "Saved!"
+    "saved": "Saved!",
+    "fontSize": "Font Size",
+    "fontSizeHint": "Adjust the interface text size"
   }
 }

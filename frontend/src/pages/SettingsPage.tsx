@@ -6,15 +6,26 @@ import { CardTitle } from '@/components/ui/CardTitle'
 import { Button } from '@/components/ui/Button'
 import type { Theme, Language } from '@/store'
 
+const FONT_SIZES = [
+  { label: 'XS', value: 12 },
+  { label: 'S',  value: 13 },
+  { label: 'M',  value: 14 },
+  { label: 'L',  value: 15 },
+  { label: 'XL', value: 16 },
+  { label: 'XXL', value: 18 },
+] as const
+
 export default function SettingsPage() {
   const { t } = useTranslation()
 
   const theme           = useStore((s) => s.theme)
   const language        = useStore((s) => s.language)
   const defaultScanPath = useStore((s) => s.defaultScanPath)
+  const fontSize        = useStore((s) => s.fontSize)
   const setTheme        = useStore((s) => s.setTheme)
   const setLanguage     = useStore((s) => s.setLanguage)
   const setDefaultScanPath = useStore((s) => s.setDefaultScanPath)
+  const setFontSize     = useStore((s) => s.setFontSize)
 
   const [pathInput, setPathInput] = useState(defaultScanPath)
   const [saved, setSaved]         = useState(false)
@@ -72,6 +83,29 @@ export default function SettingsPage() {
                 }`}
               >
                 {t(`language.${lang}`)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Font size */}
+        <div className="flex items-center justify-between py-3 border-t border-border-base">
+          <div>
+            <p className="text-sm font-medium text-text-primary">{t('settings.fontSize')}</p>
+            <p className="text-xs text-text-secondary mt-0.5">{t('settings.fontSizeHint')}</p>
+          </div>
+          <div className="flex items-center gap-1">
+            {FONT_SIZES.map(({ label, value }) => (
+              <button
+                key={value}
+                onClick={() => setFontSize(value)}
+                className={`px-2.5 py-1.5 text-xs font-mono rounded-base transition-colors ${
+                  fontSize === value
+                    ? 'bg-accent-blue text-bg-primary font-semibold'
+                    : 'text-text-secondary hover:text-text-primary border border-border-base'
+                }`}
+              >
+                {label}
               </button>
             ))}
           </div>

@@ -14,11 +14,29 @@ function getBarColor(pct: number): string {
   return '#4c9ef5'
 }
 
+function ChevronIcon({ expanded }: { expanded: boolean }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className={`w-4 h-4 transition-transform duration-150 shrink-0 ${expanded ? 'rotate-90' : ''}`}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  )
+}
+
 export const NcduTreeNode = memo(function NcduTreeNode({
   entry, parentSize, depth,
 }: NcduTreeNodeProps) {
-  const [isExpanded, setIsExpanded] = useState(depth < 2)
-  const [hasRendered, setHasRendered] = useState(depth < 2)
+  // Only auto-expand depth=0 (the root) — top-level children start collapsed
+  const [isExpanded, setIsExpanded] = useState(depth === 0)
+  const [hasRendered, setHasRendered] = useState(depth === 0)
 
   const pct      = parentSize > 0 ? (entry.dsize / parentSize * 100) : 100
   const pctStr   = pct.toFixed(1) + '%'
@@ -35,31 +53,31 @@ export const NcduTreeNode = memo(function NcduTreeNode({
   return (
     <li className="list-none">
       <div
-        className="flex items-center gap-1.5 py-0.5 px-1 rounded hover:bg-bg-card-hover cursor-pointer group"
+        className="flex items-center gap-2 py-1 px-1 rounded hover:bg-bg-card-hover cursor-pointer group"
         onClick={handleToggle}
       >
-        <span className="w-3 text-text-muted text-[10px] select-none">
-          {hasChildren ? (isExpanded ? '▾' : '▸') : ' '}
+        <span className={`w-4 flex items-center justify-center shrink-0 ${hasChildren ? 'text-text-secondary' : 'text-transparent'}`}>
+          {hasChildren ? <ChevronIcon expanded={isExpanded} /> : <ChevronIcon expanded={false} />}
         </span>
-        <span className="text-sm">{entry.is_dir ? '📁' : '📄'}</span>
+        <span className="text-base leading-none shrink-0">{entry.is_dir ? '📁' : '📄'}</span>
         <span className="text-xs text-text-primary font-mono truncate flex-1 min-w-0" title={entry.name}>
           {entry.name}
         </span>
-        <div className="w-20 h-1.5 bg-border-base rounded-full overflow-hidden shrink-0">
+        <div className="w-24 h-2 bg-border-base rounded-full overflow-hidden shrink-0">
           <div
             className="h-full rounded-full"
             style={{ width: Math.min(100, pct) + '%', background: barColor }}
           />
         </div>
-        <span className="text-[10px] font-mono w-10 text-right shrink-0" style={{ color: barColor }}>
+        <span className="text-xs font-mono w-12 text-right shrink-0" style={{ color: barColor }}>
           {pctStr}
         </span>
-        <span className="text-[10px] font-mono text-text-secondary w-16 text-right shrink-0">
+        <span className="text-xs font-mono text-text-secondary w-16 text-right shrink-0">
           {formatBytes(entry.dsize)}
         </span>
       </div>
       {hasChildren && hasRendered && (
-        <ul className={`ml-5 border-l border-border-base pl-2 ${isExpanded ? '' : 'hidden'}`}>
+        <ul className={`ml-6 border-l border-border-base pl-2 ${isExpanded ? '' : 'hidden'}`}>
           {entry.children!.map((child, i) => (
             <NcduTreeNode
               key={i}

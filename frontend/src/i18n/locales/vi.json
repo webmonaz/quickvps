@@ -67,6 +67,8 @@
     "defaultScanPath": "Đường dẫn quét mặc định",
     "defaultScanPathHint": "Điền sẵn đường dẫn khi bạn mở Phân tích lưu trữ",
     "save": "Lưu",
-    "saved": "Đã lưu!"
+    "saved": "Đã lưu!",
+    "fontSize": "Cỡ chữ",
+    "fontSizeHint": "Điều chỉnh kích thước chữ trên giao diện"
   }
 }

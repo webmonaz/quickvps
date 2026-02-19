@@ -68,6 +68,15 @@ func parseDir(arr []json.RawMessage) (*DirEntry, error) {
 		entry.Children = append(entry.Children, child)
 	}
 
+	// Compute recursive total disk size from children (ncdu dir metadata only has inode size)
+	var totalDisk int64
+	for _, child := range entry.Children {
+		totalDisk += child.DiskSize
+	}
+	if totalDisk > 0 {
+		entry.DiskSize = totalDisk
+	}
+
 	// Sort children largest-first by disk size
 	sort.Slice(entry.Children, func(i, j int) bool {
 		return entry.Children[i].DiskSize > entry.Children[j].DiskSize
