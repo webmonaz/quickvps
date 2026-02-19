@@ -30,6 +30,28 @@
       "args": ["--addr=:9090", "--password=dev"],
       "env": {},
       "presentation": { "order": 3 }
+    },
+    {
+      "name": "Build Frontend + Run (password=dev)",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}",
+      "args": ["--password=dev"],
+      "env": {},
+      "preLaunchTask": "Build Frontend",
+      "presentation": { "order": 4 }
+    },
+    {
+      "name": "Build Frontend + Run (no auth)",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}",
+      "args": [],
+      "env": {},
+      "preLaunchTask": "Build Frontend",
+      "presentation": { "order": 5 }
     }
   ]
 }

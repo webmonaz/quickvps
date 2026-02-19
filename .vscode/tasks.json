@@ -2,10 +2,26 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Build Frontend",
+      "type": "shell",
+      "command": "make frontend",
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
       "label": "Build (current OS)",
       "type": "shell",
       "command": "make build",
       "group": "build",
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": "$go"
+    },
+    {
+      "label": "Build Full (frontend + Linux amd64)",
+      "type": "shell",
+      "command": "make build-full",
+      "group": { "kind": "build", "isDefault": true },
       "presentation": { "reveal": "always", "panel": "shared" },
       "problemMatcher": "$go"
     },
