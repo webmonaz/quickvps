@@ -31,6 +31,7 @@ interface ServerInfoState {
 interface PreferencesState {
   theme: Theme
   language: Language
+  defaultScanPath: string
 }
 
 export interface AppState extends MetricsState, NcduState, ConnectionState, ServerInfoState, PreferencesState {
@@ -51,6 +52,7 @@ export interface AppState extends MetricsState, NcduState, ConnectionState, Serv
   // Preferences actions
   setTheme: (theme: Theme) => void
   setLanguage: (language: Language) => void
+  setDefaultScanPath: (path: string) => void
 }
 
 const HISTORY_LENGTH = 60
@@ -68,13 +70,14 @@ export const useStore = create<AppState>()(
       snapshot: null,
       netHistory: [Array(HISTORY_LENGTH).fill(0), Array(HISTORY_LENGTH).fill(0)],
       diskIOHistory: [Array(HISTORY_LENGTH).fill(0), Array(HISTORY_LENGTH).fill(0)],
-      scanPath: '/',
+      scanPath: (localStorage.getItem('defaultScanPath')) ?? '/',
       scanResult: null,
       isScanning: false,
       isConnected: false,
       serverInfo: null,
       theme: (localStorage.getItem('theme') as Theme) ?? 'dark',
       language: (localStorage.getItem('language') as Language) ?? 'en',
+      defaultScanPath: (localStorage.getItem('defaultScanPath')) ?? '/',
 
       // Actions
       setSnapshot: (snapshot) =>
@@ -117,6 +120,11 @@ export const useStore = create<AppState>()(
       setLanguage: (language) => set((s) => {
         s.language = language
         localStorage.setItem('language', language)
+      }),
+
+      setDefaultScanPath: (path) => set((s) => {
+        s.defaultScanPath = path
+        localStorage.setItem('defaultScanPath', path)
       }),
     })),
   ),

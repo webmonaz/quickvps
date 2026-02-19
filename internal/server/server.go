@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"quickvps/internal/metrics"
@@ -55,7 +56,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/api/metrics", s.handleMetrics)
 	s.mux.HandleFunc("/api/ncdu/scan", s.handleNcduScan)
 	s.mux.HandleFunc("/api/ncdu/status", s.handleNcduStatus)
-	s.mux.Handle("/", fileServer)
+	s.mux.Handle("/", spaHandler(webSub, fileServer))
 }
 
 func (s *Server) Handler() http.Handler {
@@ -65,6 +66,30 @@ func (s *Server) Handler() http.Handler {
 		handler = basicAuthMiddleware(s.user, s.password, handler)
 	}
 	return handler
+}
+
+// spaHandler serves static files and falls back to index.html for SPA routes.
+func spaHandler(webSub fs.FS, fileServer http.Handler) http.Handler {
+	// Pre-read index.html once for fast fallback responses.
+	indexHTML, err := fs.ReadFile(webSub, "index.html")
+	if err != nil {
+		log.Fatalf("spaHandler: failed to read index.html: %v", err)
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/")
+		if path == "" {
+			path = "index.html"
+		}
+		if f, err := webSub.Open(path); err == nil {
+			f.Close()
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+		// File not found — serve index.html so React Router handles the route.
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(indexHTML)
+	})
 }
 
 func basicAuthMiddleware(user, pass string, next http.Handler) http.Handler {

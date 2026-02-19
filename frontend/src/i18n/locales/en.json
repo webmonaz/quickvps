@@ -52,5 +52,21 @@
   "language": {
     "en": "EN",
     "vi": "VI"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "storage": "Storage",
+    "settings": "Settings"
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": "Appearance",
+    "theme": "Theme",
+    "language": "Language",
+    "storageAnalyzer": "Storage Analyzer",
+    "defaultScanPath": "Default Scan Path",
+    "defaultScanPathHint": "Pre-fills the scan path when you open the Storage Analyzer",
+    "save": "Save",
+    "saved": "Saved!"
   }
 }

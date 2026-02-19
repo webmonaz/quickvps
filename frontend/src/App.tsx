@@ -7,6 +7,8 @@ import { useServerInfo } from '@/hooks/useServerInfo'
 import { useNcduScan } from '@/hooks/useNcduScan'
 import { useStore } from '@/store'
 import DashboardPage from '@/pages/DashboardPage'
+import StoragePage from '@/pages/StoragePage'
+import SettingsPage from '@/pages/SettingsPage'
 
 function AppRoutes() {
   const { fetchStatus } = useNcduScan()
@@ -35,7 +37,10 @@ function AppRoutes() {
   return (
     <AppShell>
       <Routes>
-        <Route path="/*" element={<DashboardPage />} />
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/storage" element={<StoragePage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="*" element={<DashboardPage />} />
       </Routes>
     </AppShell>
   )

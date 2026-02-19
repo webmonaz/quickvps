@@ -52,5 +52,21 @@
   "language": {
     "en": "EN",
     "vi": "VI"
+  },
+  "nav": {
+    "dashboard": "Bảng điều khiển",
+    "storage": "Lưu trữ",
+    "settings": "Cài đặt"
+  },
+  "settings": {
+    "title": "Cài đặt",
+    "appearance": "Giao diện",
+    "theme": "Chủ đề",
+    "language": "Ngôn ngữ",
+    "storageAnalyzer": "Phân tích lưu trữ",
+    "defaultScanPath": "Đường dẫn quét mặc định",
+    "defaultScanPathHint": "Điền sẵn đường dẫn khi bạn mở Phân tích lưu trữ",
+    "save": "Lưu",
+    "saved": "Đã lưu!"
   }
 }

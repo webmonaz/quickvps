@@ -11,7 +11,7 @@
 - i18n: English (default) + Vietnamese via react-i18next
 - Language and theme persisted in localStorage
 
-## Phase 3 — Router + Settings Page
+## Phase 3 — Router + Settings Page ✅
 - `/storage` route: full-page Storage Analyzer
 - `/settings` route: theme, language, default scan path preferences
 - Go SPA fallback for React Router deep links

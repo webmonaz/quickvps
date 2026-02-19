@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/store'
 import { StatusDot } from '@/components/ui/StatusDot'
@@ -46,6 +47,30 @@ export const Header = memo(function Header() {
           )}
         </div>
       </div>
+
+      {/* Navigation */}
+      <nav className="flex items-center gap-1 text-xs font-mono">
+        {([
+          { to: '/',        label: t('nav.dashboard'), end: true },
+          { to: '/storage', label: t('nav.storage'),   end: false },
+          { to: '/settings',label: t('nav.settings'),  end: false },
+        ] as const).map(({ to, label, end }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={end}
+            className={({ isActive }) =>
+              `px-3 py-1.5 rounded-base transition-colors ${
+                isActive
+                  ? 'bg-accent-blue text-bg-primary font-semibold'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-card-hover'
+              }`
+            }
+          >
+            {label}
+          </NavLink>
+        ))}
+      </nav>
 
       {/* Controls: language switcher + theme toggle */}
       <div className="flex items-center gap-3">
