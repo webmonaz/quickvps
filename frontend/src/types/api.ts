@@ -5,6 +5,8 @@ export interface ServerInfo {
   os: string
   arch: string
   uptime: string
+  interval_ms?: number
+  ncdu_cache_ttl_ms?: number
 }
 
 export interface WSMessage {

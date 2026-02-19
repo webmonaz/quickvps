@@ -1,6 +1,7 @@
 {
   "header": {
-    "live": "Trực tiếp"
+    "live": "Trực tiếp",
+    "frozen": "Đã đóng băng"
   },
   "cpu": {
     "title": "CPU"
@@ -63,7 +64,18 @@
     "appearance": "Giao diện",
     "theme": "Chủ đề",
     "language": "Ngôn ngữ",
+    "dataUpdates": "Cập nhật dữ liệu",
+    "freeze": "Đóng băng",
+    "resume": "Tiếp tục",
+    "freezeHint": "Tạm dừng cập nhật dashboard mà không ngắt kết nối",
+    "updateIntervalMs": "Chu kỳ cập nhật (ms)",
+    "updateIntervalHint": "Áp dụng cho tần suất đẩy từ server và tần suất render trên client (250-60000 ms)",
+    "apply": "Áp dụng",
+    "invalidInterval": "Chu kỳ không hợp lệ",
     "storageAnalyzer": "Phân tích lưu trữ",
+    "ncduCacheTtlMs": "TTL bộ nhớ đệm lưu trữ (ms)",
+    "ncduCacheTtlHint": "Tái sử dụng kết quả quét gần đây cho cùng đường dẫn (1000-3600000 ms)",
+    "invalidCacheTtl": "TTL bộ nhớ đệm không hợp lệ",
     "defaultScanPath": "Đường dẫn quét mặc định",
     "defaultScanPathHint": "Điền sẵn đường dẫn khi bạn mở Phân tích lưu trữ",
     "save": "Lưu",

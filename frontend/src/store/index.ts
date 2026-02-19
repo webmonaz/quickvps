@@ -33,6 +33,9 @@ interface PreferencesState {
   language: Language
   defaultScanPath: string
   fontSize: number
+  isFrozen: boolean
+  updateIntervalMs: number
+  ncduCacheTtlMs: number
 }
 
 export interface AppState extends MetricsState, NcduState, ConnectionState, ServerInfoState, PreferencesState {
@@ -55,6 +58,9 @@ export interface AppState extends MetricsState, NcduState, ConnectionState, Serv
   setLanguage: (language: Language) => void
   setDefaultScanPath: (path: string) => void
   setFontSize: (size: number) => void
+  setFrozen: (frozen: boolean) => void
+  setUpdateIntervalMs: (ms: number) => void
+  setNcduCacheTtlMs: (ms: number) => void
 }
 
 const HISTORY_LENGTH = 60
@@ -81,6 +87,9 @@ export const useStore = create<AppState>()(
       language: (localStorage.getItem('language') as Language) ?? 'en',
       defaultScanPath: (localStorage.getItem('defaultScanPath')) ?? '/',
       fontSize: Number(localStorage.getItem('fontSize')) || 14,
+      isFrozen: localStorage.getItem('isFrozen') === 'true',
+      updateIntervalMs: Math.max(250, Number(localStorage.getItem('updateIntervalMs')) || 2000),
+      ncduCacheTtlMs: Math.max(1000, Number(localStorage.getItem('ncduCacheTtlMs')) || 600000),
 
       // Actions
       setSnapshot: (snapshot) =>
@@ -134,6 +143,23 @@ export const useStore = create<AppState>()(
         s.fontSize = size
         localStorage.setItem('fontSize', String(size))
         document.documentElement.style.fontSize = size + 'px'
+      }),
+
+      setFrozen: (frozen) => set((s) => {
+        s.isFrozen = frozen
+        localStorage.setItem('isFrozen', String(frozen))
+      }),
+
+      setUpdateIntervalMs: (ms) => set((s) => {
+        const next = Math.max(250, ms)
+        s.updateIntervalMs = next
+        localStorage.setItem('updateIntervalMs', String(next))
+      }),
+
+      setNcduCacheTtlMs: (ms) => set((s) => {
+        const next = Math.max(1000, ms)
+        s.ncduCacheTtlMs = next
+        localStorage.setItem('ncduCacheTtlMs', String(next))
       }),
     })),
   ),

@@ -53,8 +53,10 @@ func (s *Server) registerRoutes() {
 
 	s.mux.HandleFunc("/ws", s.handleWS)
 	s.mux.HandleFunc("/api/info", s.handleInfo)
+	s.mux.HandleFunc("/api/interval", s.handleInterval)
 	s.mux.HandleFunc("/api/metrics", s.handleMetrics)
 	s.mux.HandleFunc("/api/ncdu/scan", s.handleNcduScan)
+	s.mux.HandleFunc("/api/ncdu/cache", s.handleNcduCache)
 	s.mux.HandleFunc("/api/ncdu/status", s.handleNcduStatus)
 	s.mux.Handle("/", spaHandler(webSub, fileServer))
 }

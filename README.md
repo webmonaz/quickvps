@@ -10,7 +10,8 @@ A single-binary Go web application that runs on any Linux VPS to monitor system 
 - **Per-core CPU bars** with usage history charts
 - **Disk I/O rates** (read/write bytes per second) per device
 - **Network interface rates** (recv/sent) with rolling charts
-- **Storage Analyzer** — runs `ncdu` in the background, renders a collapsible directory tree in the browser. Auto-installs `ncdu` if absent (supports apt, yum, pacman)
+- **Freeze + custom update interval** — pause live updates and adjust refresh interval from Settings
+- **Storage Analyzer** — runs `ncdu` in the background, renders a collapsible directory tree in the browser. Reuses recent same-path scan results (TTL configurable in Settings, default 10 minutes) to reduce server load. Auto-installs `ncdu` if absent (supports apt, yum, pacman)
 - **Basic Auth** — one flag sets a password; no config files needed
 - **Dark theme** — single dark UI with CSS variables, responsive down to mobile
 - **Single binary** — all web assets are embedded via `//go:embed`; just `scp` and run
@@ -115,8 +116,12 @@ All endpoints require Basic Auth when `--password` is set.
 |----------|--------------------|------------------------------------------|
 | `GET`    | `/`                | Dashboard HTML (embedded)                |
 | `GET`    | `/api/info`        | Hostname, OS, arch, uptime               |
+| `GET`    | `/api/interval`    | Current metrics interval                 |
+| `PUT`    | `/api/interval`    | Update interval `{"interval_ms":2000}` |
 | `GET`    | `/api/metrics`     | Current snapshot (one-shot JSON)         |
 | `POST`   | `/api/ncdu/scan`   | Start storage scan `{"path":"/"}`        |
+| `GET`    | `/api/ncdu/cache`  | Current ncdu cache TTL                   |
+| `PUT`    | `/api/ncdu/cache`  | Update cache TTL `{"cache_ttl_ms":600000}` |
 | `GET`    | `/api/ncdu/status` | Poll scan status / result                |
 | `DELETE` | `/api/ncdu/scan`   | Cancel running scan                      |
 | `GET`    | `/ws`              | WebSocket — server pushes snapshot every interval |

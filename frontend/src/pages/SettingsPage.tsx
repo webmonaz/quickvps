@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/store'
 import { Card } from '@/components/ui/Card'
@@ -26,14 +26,90 @@ export default function SettingsPage() {
   const setLanguage     = useStore((s) => s.setLanguage)
   const setDefaultScanPath = useStore((s) => s.setDefaultScanPath)
   const setFontSize     = useStore((s) => s.setFontSize)
+  const isFrozen        = useStore((s) => s.isFrozen)
+  const updateIntervalMs = useStore((s) => s.updateIntervalMs)
+  const ncduCacheTtlMs  = useStore((s) => s.ncduCacheTtlMs)
+  const setFrozen       = useStore((s) => s.setFrozen)
+  const setUpdateIntervalMs = useStore((s) => s.setUpdateIntervalMs)
+  const setNcduCacheTtlMs = useStore((s) => s.setNcduCacheTtlMs)
 
   const [pathInput, setPathInput] = useState(defaultScanPath)
   const [saved, setSaved]         = useState(false)
+  const [intervalInput, setIntervalInput] = useState(String(updateIntervalMs))
+  const [intervalState, setIntervalState] = useState<'idle' | 'saved' | 'error'>('idle')
+  const [cacheTtlInput, setCacheTtlInput] = useState(String(ncduCacheTtlMs))
+  const [cacheTtlState, setCacheTtlState] = useState<'idle' | 'saved' | 'error'>('idle')
+
+  useEffect(() => {
+    setIntervalInput(String(updateIntervalMs))
+  }, [updateIntervalMs])
+
+  useEffect(() => {
+    setCacheTtlInput(String(ncduCacheTtlMs))
+  }, [ncduCacheTtlMs])
 
   function handleSavePath() {
     setDefaultScanPath(pathInput.trim() || '/')
     setSaved(true)
     setTimeout(() => setSaved(false), 1500)
+  }
+
+  async function handleSaveInterval() {
+    const parsed = Number(intervalInput)
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      setIntervalState('error')
+      return
+    }
+
+    const next = Math.max(250, Math.min(60000, Math.round(parsed)))
+    const prev = updateIntervalMs
+    setUpdateIntervalMs(next)
+    setIntervalInput(String(next))
+
+    try {
+      const res = await fetch('/api/interval', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ interval_ms: next }),
+      })
+      if (!res.ok) throw new Error('failed to save interval')
+      setIntervalState('saved')
+      setTimeout(() => setIntervalState('idle'), 1500)
+    } catch (err) {
+      console.error('Failed to update interval:', err)
+      setUpdateIntervalMs(prev)
+      setIntervalInput(String(prev))
+      setIntervalState('error')
+    }
+  }
+
+  async function handleSaveCacheTtl() {
+    const parsed = Number(cacheTtlInput)
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      setCacheTtlState('error')
+      return
+    }
+
+    const next = Math.max(1000, Math.min(3600000, Math.round(parsed)))
+    const prev = ncduCacheTtlMs
+    setNcduCacheTtlMs(next)
+    setCacheTtlInput(String(next))
+
+    try {
+      const res = await fetch('/api/ncdu/cache', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cache_ttl_ms: next }),
+      })
+      if (!res.ok) throw new Error('failed to save ncdu cache ttl')
+      setCacheTtlState('saved')
+      setTimeout(() => setCacheTtlState('idle'), 1500)
+    } catch (err) {
+      console.error('Failed to update ncdu cache ttl:', err)
+      setNcduCacheTtlMs(prev)
+      setCacheTtlInput(String(prev))
+      setCacheTtlState('error')
+    }
   }
 
   return (
@@ -112,9 +188,74 @@ export default function SettingsPage() {
         </div>
       </Card>
 
+      {/* Data updates */}
+      <Card>
+        <CardTitle>{t('settings.dataUpdates')}</CardTitle>
+
+        <div className="flex items-center justify-between py-3 border-b border-border-base">
+          <div>
+            <p className="text-sm font-medium text-text-primary">{t('settings.freeze')}</p>
+            <p className="text-xs text-text-secondary mt-0.5">{t('settings.freezeHint')}</p>
+          </div>
+          <Button variant={isFrozen ? 'danger' : 'ghost'} onClick={() => setFrozen(!isFrozen)}>
+            {isFrozen ? t('settings.resume') : t('settings.freeze')}
+          </Button>
+        </div>
+
+        <div className="py-3">
+          <label className="block text-sm font-medium text-text-primary mb-1">
+            {t('settings.updateIntervalMs')}
+          </label>
+          <p className="text-xs text-text-secondary mb-3">{t('settings.updateIntervalHint')}</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={250}
+              max={60000}
+              step={250}
+              value={intervalInput}
+              onChange={(e) => { setIntervalInput(e.target.value); setIntervalState('idle') }}
+              onKeyDown={(e) => e.key === 'Enter' && handleSaveInterval()}
+              className="w-40 bg-bg-primary border border-border-base rounded-base px-3 py-1.5 text-xs font-mono text-text-primary focus:outline-none focus:border-accent-blue"
+            />
+            <Button variant="primary" onClick={handleSaveInterval}>
+              {intervalState === 'saved' ? t('settings.saved') : t('settings.apply')}
+            </Button>
+            {intervalState === 'error' && (
+              <span className="text-xs text-accent-red">{t('settings.invalidInterval')}</span>
+            )}
+          </div>
+        </div>
+      </Card>
+
       {/* Storage Analyzer */}
       <Card>
         <CardTitle>{t('settings.storageAnalyzer')}</CardTitle>
+
+        <div className="py-3 border-b border-border-base">
+          <label className="block text-sm font-medium text-text-primary mb-1">
+            {t('settings.ncduCacheTtlMs')}
+          </label>
+          <p className="text-xs text-text-secondary mb-3">{t('settings.ncduCacheTtlHint')}</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={1000}
+              max={3600000}
+              step={1000}
+              value={cacheTtlInput}
+              onChange={(e) => { setCacheTtlInput(e.target.value); setCacheTtlState('idle') }}
+              onKeyDown={(e) => e.key === 'Enter' && handleSaveCacheTtl()}
+              className="w-40 bg-bg-primary border border-border-base rounded-base px-3 py-1.5 text-xs font-mono text-text-primary focus:outline-none focus:border-accent-blue"
+            />
+            <Button variant="primary" onClick={handleSaveCacheTtl}>
+              {cacheTtlState === 'saved' ? t('settings.saved') : t('settings.apply')}
+            </Button>
+            {cacheTtlState === 'error' && (
+              <span className="text-xs text-accent-red">{t('settings.invalidCacheTtl')}</span>
+            )}
+          </div>
+        </div>
 
         <div className="py-3">
           <label className="block text-sm font-medium text-text-primary mb-1">

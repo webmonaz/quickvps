@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"time"
 
+	"quickvps/internal/ncdu"
 	"quickvps/internal/ws"
 )
 
@@ -21,10 +22,12 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 	hostname, _ := os.Hostname()
 
 	info := map[string]any{
-		"hostname": hostname,
-		"os":       runtime.GOOS,
-		"arch":     runtime.GOARCH,
-		"uptime":   getUptime(),
+		"hostname":          hostname,
+		"os":                runtime.GOOS,
+		"arch":              runtime.GOARCH,
+		"uptime":            getUptime(),
+		"interval_ms":       s.collector.Interval().Milliseconds(),
+		"ncdu_cache_ttl_ms": s.runner.CacheTTL().Milliseconds(),
 	}
 	writeJSON(w, http.StatusOK, info)
 }
@@ -78,8 +81,17 @@ func (s *Server) handleNcduScan(w http.ResponseWriter, r *http.Request) {
 		if body.Path == "" {
 			body.Path = "/"
 		}
-		if err := s.runner.Start(body.Path); err != nil {
+		mode, err := s.runner.Start(body.Path)
+		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		if mode == ncdu.StartModeCached {
+			writeJSON(w, http.StatusOK, map[string]string{"status": "cached", "path": body.Path})
+			return
+		}
+		if mode == ncdu.StartModeRunning {
+			writeJSON(w, http.StatusAccepted, map[string]string{"status": "running", "path": body.Path})
 			return
 		}
 		writeJSON(w, http.StatusAccepted, map[string]string{"status": "started", "path": body.Path})
@@ -96,4 +108,80 @@ func (s *Server) handleNcduScan(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleNcduStatus(w http.ResponseWriter, r *http.Request) {
 	result := s.runner.Result()
 	writeJSON(w, http.StatusOK, result)
+}
+
+func (s *Server) handleNcduCache(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		ttl := s.runner.CacheTTL()
+		writeJSON(w, http.StatusOK, map[string]any{
+			"cache_ttl_ms": ttl.Milliseconds(),
+			"cache_ttl":    ttl.String(),
+		})
+
+	case http.MethodPut:
+		var body struct {
+			CacheTTLMS int64 `json:"cache_ttl_ms"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
+			return
+		}
+		if body.CacheTTLMS <= 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "cache_ttl_ms must be > 0"})
+			return
+		}
+
+		ttl := time.Duration(body.CacheTTLMS) * time.Millisecond
+		if err := s.runner.SetCacheTTL(ttl); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]any{
+			"cache_ttl_ms": ttl.Milliseconds(),
+			"cache_ttl":    ttl.String(),
+		})
+
+	default:
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (s *Server) handleInterval(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		d := s.collector.Interval()
+		writeJSON(w, http.StatusOK, map[string]any{
+			"interval_ms": d.Milliseconds(),
+			"interval":    d.String(),
+		})
+
+	case http.MethodPut:
+		var body struct {
+			IntervalMS int64 `json:"interval_ms"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
+			return
+		}
+		if body.IntervalMS <= 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "interval_ms must be > 0"})
+			return
+		}
+
+		interval := time.Duration(body.IntervalMS) * time.Millisecond
+		if err := s.collector.SetInterval(interval); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]any{
+			"interval_ms": interval.Milliseconds(),
+			"interval":    interval.String(),
+		})
+
+	default:
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	}
 }

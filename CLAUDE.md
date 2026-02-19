@@ -101,9 +101,11 @@ POST /api/ncdu/scan → runner.Start(path)
 |----------|--------------------|----------------------|
 | GET      | `/`                | static file server   |
 | GET      | `/api/info`        | handleInfo           |
+| GET/PUT  | `/api/interval`    | handleInterval       |
 | GET      | `/api/metrics`     | handleMetrics        |
 | POST     | `/api/ncdu/scan`   | handleNcduScan       |
 | DELETE   | `/api/ncdu/scan`   | handleNcduScan       |
+| GET/PUT  | `/api/ncdu/cache`  | handleNcduCache      |
 | GET      | `/api/ncdu/status` | handleNcduStatus     |
 | GET      | `/ws`              | handleWS             |
 

@@ -7,6 +7,7 @@ import type { Language } from '@/store'
 
 export const Header = memo(function Header() {
   const isConnected = useStore((s) => s.isConnected)
+  const isFrozen    = useStore((s) => s.isFrozen)
   const serverInfo  = useStore((s) => s.serverInfo)
   const theme       = useStore((s) => s.theme)
   const language    = useStore((s) => s.language)
@@ -32,6 +33,11 @@ export const Header = memo(function Header() {
           <div className="flex items-center gap-1.5">
             <StatusDot connected={isConnected} />
             <span>{t('header.live')}</span>
+            {isFrozen && (
+              <span className="px-1.5 py-0.5 rounded bg-accent-yellow text-bg-primary text-[10px] font-semibold">
+                {t('header.frozen')}
+              </span>
+            )}
           </div>
           {serverInfo?.hostname && (
             <div className="flex items-center gap-1">

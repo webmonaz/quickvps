@@ -2,26 +2,50 @@ package ncdu
 
 import (
 	"context"
+	"errors"
 	"log"
 	"os/exec"
 	"sync"
 	"time"
 )
 
+const defaultCacheTTL = 10 * time.Minute
+
+type StartMode string
+
+const (
+	StartModeStarted StartMode = "started"
+	StartModeRunning StartMode = "running"
+	StartModeCached  StartMode = "cached"
+)
+
 type Runner struct {
-	mu     sync.RWMutex
-	result ScanResult
-	cancel context.CancelFunc
+	mu       sync.RWMutex
+	result   ScanResult
+	cancel   context.CancelFunc
+	cacheTTL time.Duration
 }
 
 func NewRunner() *Runner {
 	return &Runner{
-		result: ScanResult{Status: StatusIdle},
+		result:   ScanResult{Status: StatusIdle},
+		cacheTTL: defaultCacheTTL,
 	}
 }
 
-func (r *Runner) Start(path string) error {
+func (r *Runner) Start(path string) (StartMode, error) {
 	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.result.Status == StatusDone &&
+		r.result.Path == path &&
+		time.Since(r.result.ScannedAt) <= r.cacheTTL {
+		return StartModeCached, nil
+	}
+
+	if r.result.Status == StatusRunning && r.result.Path == path {
+		return StartModeRunning, nil
+	}
 
 	// Cancel any running scan
 	if r.cancel != nil {
@@ -35,10 +59,9 @@ func (r *Runner) Start(path string) error {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	r.cancel = cancel
-	r.mu.Unlock()
 
 	go r.run(ctx, path)
-	return nil
+	return StartModeStarted, nil
 }
 
 func (r *Runner) run(ctx context.Context, path string) {
@@ -120,6 +143,23 @@ func (r *Runner) IsReady() bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.result.Status == StatusDone
+}
+
+func (r *Runner) CacheTTL() time.Duration {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.cacheTTL
+}
+
+func (r *Runner) SetCacheTTL(ttl time.Duration) error {
+	if ttl <= 0 {
+		return errors.New("cache ttl must be greater than zero")
+	}
+
+	r.mu.Lock()
+	r.cacheTTL = ttl
+	r.mu.Unlock()
+	return nil
 }
 
 func (r *Runner) setError(msg string) {

@@ -6,10 +6,26 @@ import type { WSMessage } from '@/types/api'
 export function useWebSocket(onNcduReady: () => void) {
   const setSnapshot  = useStore((s) => s.setSnapshot)
   const setConnected = useStore((s) => s.setConnected)
+  const isFrozen = useStore((s) => s.isFrozen)
+  const updateIntervalMs = useStore((s) => s.updateIntervalMs)
   const wsRef        = useRef<WebSocket | null>(null)
   const timerRef     = useRef<ReturnType<typeof setTimeout> | null>(null)
   const onNcduRef    = useRef(onNcduReady)
+  const frozenRef    = useRef(isFrozen)
+  const intervalRef  = useRef(updateIntervalMs)
+  const lastUpdateRef = useRef(0)
   onNcduRef.current  = onNcduReady
+
+  useEffect(() => {
+    frozenRef.current = isFrozen
+    if (!isFrozen) {
+      lastUpdateRef.current = 0
+    }
+  }, [isFrozen])
+
+  useEffect(() => {
+    intervalRef.current = updateIntervalMs
+  }, [updateIntervalMs])
 
   const connect = useCallback(() => {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -28,6 +44,14 @@ export function useWebSocket(onNcduReady: () => void) {
       try {
         const msg = JSON.parse(e.data) as WSMessage
         if (msg.type === 'metrics' && msg.snapshot) {
+          if (frozenRef.current) {
+            return
+          }
+          const now = Date.now()
+          if (now-lastUpdateRef.current < intervalRef.current) {
+            return
+          }
+          lastUpdateRef.current = now
           setSnapshot(msg.snapshot)
         }
         if (msg.ncdu_ready) {

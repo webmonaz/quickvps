@@ -8,31 +8,6 @@ export function useNcduScan() {
   const setScanResult = useStore((s) => s.setScanResult)
   const setIsScanning = useStore((s) => s.setIsScanning)
 
-  const startScan = useCallback(async () => {
-    setIsScanning(true)
-    setScanResult(null)
-    try {
-      await fetch('/api/ncdu/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: scanPath }),
-      })
-    } catch (err) {
-      console.error('Scan start error:', err)
-      setIsScanning(false)
-    }
-  }, [scanPath, setIsScanning, setScanResult])
-
-  const cancelScan = useCallback(async () => {
-    try {
-      await fetch('/api/ncdu/scan', { method: 'DELETE' })
-    } catch (err) {
-      console.error('Scan cancel error:', err)
-    }
-    setIsScanning(false)
-    setScanResult(null)
-  }, [setIsScanning, setScanResult])
-
   const fetchStatus = useCallback(async () => {
     try {
       const r = await fetch('/api/ncdu/status')
@@ -45,6 +20,38 @@ export function useNcduScan() {
       console.error('fetchNcdu error:', err)
     }
   }, [setScanResult, setIsScanning])
+
+  const startScan = useCallback(async () => {
+    setIsScanning(true)
+    setScanResult(null)
+    try {
+      const r = await fetch('/api/ncdu/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: scanPath }),
+      })
+      if (!r.ok) {
+        throw new Error('failed to start scan')
+      }
+      const payload = await r.json() as { status?: string }
+      if (payload.status === 'cached' || payload.status === 'running') {
+        await fetchStatus()
+      }
+    } catch (err) {
+      console.error('Scan start error:', err)
+      setIsScanning(false)
+    }
+  }, [scanPath, setIsScanning, setScanResult, fetchStatus])
+
+  const cancelScan = useCallback(async () => {
+    try {
+      await fetch('/api/ncdu/scan', { method: 'DELETE' })
+    } catch (err) {
+      console.error('Scan cancel error:', err)
+    }
+    setIsScanning(false)
+    setScanResult(null)
+  }, [setIsScanning, setScanResult])
 
   return { startScan, cancelScan, fetchStatus, isScanning, scanPath }
 }

@@ -1,6 +1,7 @@
 {
   "header": {
-    "live": "Live"
+    "live": "Live",
+    "frozen": "Frozen"
   },
   "cpu": {
     "title": "CPU"
@@ -63,7 +64,18 @@
     "appearance": "Appearance",
     "theme": "Theme",
     "language": "Language",
+    "dataUpdates": "Data Updates",
+    "freeze": "Freeze",
+    "resume": "Resume",
+    "freezeHint": "Pause live dashboard updates without disconnecting",
+    "updateIntervalMs": "Update Interval (ms)",
+    "updateIntervalHint": "Controls both server push and client render rate (250-60000 ms)",
+    "apply": "Apply",
+    "invalidInterval": "Invalid interval",
     "storageAnalyzer": "Storage Analyzer",
+    "ncduCacheTtlMs": "Storage Cache TTL (ms)",
+    "ncduCacheTtlHint": "Reuses recent scan results for the same path (1000-3600000 ms)",
+    "invalidCacheTtl": "Invalid cache TTL",
     "defaultScanPath": "Default Scan Path",
     "defaultScanPathHint": "Pre-fills the scan path when you open the Storage Analyzer",
     "save": "Save",
