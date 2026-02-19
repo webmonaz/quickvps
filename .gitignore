@@ -17,7 +17,6 @@ coverage.out
 
 # Editor / IDE
 .idea/
-.vscode/
 *.swp
 *.swo
 

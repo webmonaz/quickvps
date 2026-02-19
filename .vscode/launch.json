@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run (no auth)",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}",
+      "args": [],
+      "env": {},
+      "presentation": { "order": 1 }
+    },
+    {
+      "name": "Run (password=dev)",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}",
+      "args": ["--password=dev"],
+      "env": {},
+      "presentation": { "order": 2 }
+    },
+    {
+      "name": "Run (custom port 9090, password=dev)",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}",
+      "args": ["--addr=:9090", "--password=dev"],
+      "env": {},
+      "presentation": { "order": 3 }
+    }
+  ]
+}
