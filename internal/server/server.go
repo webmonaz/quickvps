@@ -55,6 +55,8 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/api/info", s.handleInfo)
 	s.mux.HandleFunc("/api/interval", s.handleInterval)
 	s.mux.HandleFunc("/api/metrics", s.handleMetrics)
+	s.mux.HandleFunc("/api/ports", s.handlePorts)
+	s.mux.HandleFunc("/api/ports/", s.handlePortByID)
 	s.mux.HandleFunc("/api/ncdu/scan", s.handleNcduScan)
 	s.mux.HandleFunc("/api/ncdu/cache", s.handleNcduCache)
 	s.mux.HandleFunc("/api/ncdu/status", s.handleNcduStatus)

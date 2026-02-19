@@ -35,9 +35,22 @@ function IconSettings() {
   )
 }
 
+function IconPorts() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="14" rx="2"/>
+      <path d="M7 9h4"/>
+      <path d="M7 13h4"/>
+      <circle cx="16" cy="11" r="1"/>
+      <circle cx="16" cy="15" r="1"/>
+    </svg>
+  )
+}
+
 const NAV_ITEMS = [
   { to: '/',         labelKey: 'nav.dashboard', Icon: IconDashboard, end: true  },
   { to: '/storage',  labelKey: 'nav.storage',   Icon: IconStorage,   end: false },
+  { to: '/ports',    labelKey: 'nav.ports',     Icon: IconPorts,     end: false },
   { to: '/settings', labelKey: 'nav.settings',  Icon: IconSettings,  end: false },
 ] as const
 

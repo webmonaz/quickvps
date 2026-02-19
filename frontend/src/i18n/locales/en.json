@@ -57,7 +57,27 @@
   "nav": {
     "dashboard": "Dashboard",
     "storage": "Storage",
+    "ports": "Ports",
     "settings": "Settings"
+  },
+  "ports": {
+    "title": "Port Scanning",
+    "hint": "View listening ports and stop apps bound to a port",
+    "refresh": "Refresh",
+    "loading": "Loading ports...",
+    "empty": "No listening ports found",
+    "port": "Port",
+    "protocol": "Protocol",
+    "address": "Address",
+    "pid": "PID",
+    "process": "Process",
+    "actions": "Actions",
+    "kill": "Kill",
+    "killing": "Killing...",
+    "killConfirm": "Kill processes using port {{port}}? ({{processes}})",
+    "unknownProcess": "unknown process",
+    "loadError": "Failed to load ports",
+    "killError": "Failed to kill process on port"
   },
   "settings": {
     "title": "Settings",
@@ -73,8 +93,8 @@
     "apply": "Apply",
     "invalidInterval": "Invalid interval",
     "storageAnalyzer": "Storage Analyzer",
-    "ncduCacheTtlMs": "Storage Cache TTL (ms)",
-    "ncduCacheTtlHint": "Reuses recent scan results for the same path (1000-3600000 ms)",
+    "ncduCacheTtlSec": "Storage Cache TTL (sec)",
+    "ncduCacheTtlHint": "Reuses recent scan results for the same path (1-3600 sec)",
     "invalidCacheTtl": "Invalid cache TTL",
     "defaultScanPath": "Default Scan Path",
     "defaultScanPathHint": "Pre-fills the scan path when you open the Storage Analyzer",

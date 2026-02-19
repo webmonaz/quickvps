@@ -28,16 +28,16 @@ export default function SettingsPage() {
   const setFontSize     = useStore((s) => s.setFontSize)
   const isFrozen        = useStore((s) => s.isFrozen)
   const updateIntervalMs = useStore((s) => s.updateIntervalMs)
-  const ncduCacheTtlMs  = useStore((s) => s.ncduCacheTtlMs)
+  const ncduCacheTtlSec = useStore((s) => s.ncduCacheTtlSec)
   const setFrozen       = useStore((s) => s.setFrozen)
   const setUpdateIntervalMs = useStore((s) => s.setUpdateIntervalMs)
-  const setNcduCacheTtlMs = useStore((s) => s.setNcduCacheTtlMs)
+  const setNcduCacheTtlSec = useStore((s) => s.setNcduCacheTtlSec)
 
   const [pathInput, setPathInput] = useState(defaultScanPath)
   const [saved, setSaved]         = useState(false)
   const [intervalInput, setIntervalInput] = useState(String(updateIntervalMs))
   const [intervalState, setIntervalState] = useState<'idle' | 'saved' | 'error'>('idle')
-  const [cacheTtlInput, setCacheTtlInput] = useState(String(ncduCacheTtlMs))
+  const [cacheTtlInput, setCacheTtlInput] = useState(String(ncduCacheTtlSec))
   const [cacheTtlState, setCacheTtlState] = useState<'idle' | 'saved' | 'error'>('idle')
 
   useEffect(() => {
@@ -45,8 +45,8 @@ export default function SettingsPage() {
   }, [updateIntervalMs])
 
   useEffect(() => {
-    setCacheTtlInput(String(ncduCacheTtlMs))
-  }, [ncduCacheTtlMs])
+    setCacheTtlInput(String(ncduCacheTtlSec))
+  }, [ncduCacheTtlSec])
 
   function handleSavePath() {
     setDefaultScanPath(pathInput.trim() || '/')
@@ -90,23 +90,23 @@ export default function SettingsPage() {
       return
     }
 
-    const next = Math.max(1000, Math.min(3600000, Math.round(parsed)))
-    const prev = ncduCacheTtlMs
-    setNcduCacheTtlMs(next)
+    const next = Math.max(1, Math.min(3600, Math.round(parsed)))
+    const prev = ncduCacheTtlSec
+    setNcduCacheTtlSec(next)
     setCacheTtlInput(String(next))
 
     try {
       const res = await fetch('/api/ncdu/cache', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cache_ttl_ms: next }),
+        body: JSON.stringify({ cache_ttl_sec: next }),
       })
       if (!res.ok) throw new Error('failed to save ncdu cache ttl')
       setCacheTtlState('saved')
       setTimeout(() => setCacheTtlState('idle'), 1500)
     } catch (err) {
       console.error('Failed to update ncdu cache ttl:', err)
-      setNcduCacheTtlMs(prev)
+      setNcduCacheTtlSec(prev)
       setCacheTtlInput(String(prev))
       setCacheTtlState('error')
     }
@@ -234,15 +234,15 @@ export default function SettingsPage() {
 
         <div className="py-3 border-b border-border-base">
           <label className="block text-sm font-medium text-text-primary mb-1">
-            {t('settings.ncduCacheTtlMs')}
+            {t('settings.ncduCacheTtlSec')}
           </label>
           <p className="text-xs text-text-secondary mb-3">{t('settings.ncduCacheTtlHint')}</p>
           <div className="flex items-center gap-2">
             <input
               type="number"
-              min={1000}
-              max={3600000}
-              step={1000}
+              min={1}
+              max={3600}
+              step={1}
               value={cacheTtlInput}
               onChange={(e) => { setCacheTtlInput(e.target.value); setCacheTtlState('idle') }}
               onKeyDown={(e) => e.key === 'Enter' && handleSaveCacheTtl()}

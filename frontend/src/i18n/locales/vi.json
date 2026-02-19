@@ -57,7 +57,27 @@
   "nav": {
     "dashboard": "Bảng điều khiển",
     "storage": "Lưu trữ",
+    "ports": "Cổng",
     "settings": "Cài đặt"
+  },
+  "ports": {
+    "title": "Quét cổng",
+    "hint": "Xem các cổng đang lắng nghe và dừng ứng dụng đang dùng cổng",
+    "refresh": "Làm mới",
+    "loading": "Đang tải danh sách cổng...",
+    "empty": "Không tìm thấy cổng đang lắng nghe",
+    "port": "Cổng",
+    "protocol": "Giao thức",
+    "address": "Địa chỉ",
+    "pid": "PID",
+    "process": "Tiến trình",
+    "actions": "Thao tác",
+    "kill": "Dừng",
+    "killing": "Đang dừng...",
+    "killConfirm": "Dừng tiến trình đang dùng cổng {{port}}? ({{processes}})",
+    "unknownProcess": "tiến trình không xác định",
+    "loadError": "Không tải được danh sách cổng",
+    "killError": "Không dừng được tiến trình trên cổng"
   },
   "settings": {
     "title": "Cài đặt",
@@ -73,8 +93,8 @@
     "apply": "Áp dụng",
     "invalidInterval": "Chu kỳ không hợp lệ",
     "storageAnalyzer": "Phân tích lưu trữ",
-    "ncduCacheTtlMs": "TTL bộ nhớ đệm lưu trữ (ms)",
-    "ncduCacheTtlHint": "Tái sử dụng kết quả quét gần đây cho cùng đường dẫn (1000-3600000 ms)",
+    "ncduCacheTtlSec": "TTL bộ nhớ đệm lưu trữ (giây)",
+    "ncduCacheTtlHint": "Tái sử dụng kết quả quét gần đây cho cùng đường dẫn (1-3600 giây)",
     "invalidCacheTtl": "TTL bộ nhớ đệm không hợp lệ",
     "defaultScanPath": "Đường dẫn quét mặc định",
     "defaultScanPathHint": "Điền sẵn đường dẫn khi bạn mở Phân tích lưu trữ",

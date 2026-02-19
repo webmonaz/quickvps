@@ -35,7 +35,7 @@ interface PreferencesState {
   fontSize: number
   isFrozen: boolean
   updateIntervalMs: number
-  ncduCacheTtlMs: number
+  ncduCacheTtlSec: number
 }
 
 export interface AppState extends MetricsState, NcduState, ConnectionState, ServerInfoState, PreferencesState {
@@ -60,7 +60,7 @@ export interface AppState extends MetricsState, NcduState, ConnectionState, Serv
   setFontSize: (size: number) => void
   setFrozen: (frozen: boolean) => void
   setUpdateIntervalMs: (ms: number) => void
-  setNcduCacheTtlMs: (ms: number) => void
+  setNcduCacheTtlSec: (sec: number) => void
 }
 
 const HISTORY_LENGTH = 60
@@ -89,7 +89,19 @@ export const useStore = create<AppState>()(
       fontSize: Number(localStorage.getItem('fontSize')) || 14,
       isFrozen: localStorage.getItem('isFrozen') === 'true',
       updateIntervalMs: Math.max(250, Number(localStorage.getItem('updateIntervalMs')) || 2000),
-      ncduCacheTtlMs: Math.max(1000, Number(localStorage.getItem('ncduCacheTtlMs')) || 600000),
+      ncduCacheTtlSec: (() => {
+        const sec = Number(localStorage.getItem('ncduCacheTtlSec'))
+        if (Number.isFinite(sec) && sec > 0) {
+          return Math.max(1, Math.round(sec))
+        }
+
+        const legacyMs = Number(localStorage.getItem('ncduCacheTtlMs'))
+        if (Number.isFinite(legacyMs) && legacyMs > 0) {
+          return Math.max(1, Math.round(legacyMs / 1000))
+        }
+
+        return 600
+      })(),
 
       // Actions
       setSnapshot: (snapshot) =>
@@ -156,10 +168,11 @@ export const useStore = create<AppState>()(
         localStorage.setItem('updateIntervalMs', String(next))
       }),
 
-      setNcduCacheTtlMs: (ms) => set((s) => {
-        const next = Math.max(1000, ms)
-        s.ncduCacheTtlMs = next
-        localStorage.setItem('ncduCacheTtlMs', String(next))
+      setNcduCacheTtlSec: (sec) => set((s) => {
+        const next = Math.max(1, sec)
+        s.ncduCacheTtlSec = next
+        localStorage.setItem('ncduCacheTtlSec', String(next))
+        localStorage.removeItem('ncduCacheTtlMs')
       }),
     })),
   ),

@@ -9,6 +9,7 @@ import { useStore } from '@/store'
 import DashboardPage from '@/pages/DashboardPage'
 import StoragePage from '@/pages/StoragePage'
 import SettingsPage from '@/pages/SettingsPage'
+import PortsPage from '@/pages/PortsPage'
 
 function AppRoutes() {
   const { fetchStatus } = useNcduScan()
@@ -45,6 +46,7 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/storage" element={<StoragePage />} />
+        <Route path="/ports" element={<PortsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<DashboardPage />} />
       </Routes>
