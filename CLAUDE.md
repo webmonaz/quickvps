@@ -132,6 +132,18 @@ Do not add new Go dependencies without strong justification. The binary size sho
 - Do not register new middleware in `server.go` without updating `CONTRIBUTING.md`.
 - `getUptime()` reads `/proc/uptime` — it returns `"unknown"` on macOS/Windows (expected in dev).
 
+## Keeping README.md up-to-date
+
+`README.md` is the public face of this project on GitHub. Keep it in sync with any change that affects:
+
+- **API endpoints** — mirror the table in `CLAUDE.md` → `README.md`
+- **Flags / CLI options** — `--addr`, `--user`, `--password`, `--interval`
+- **Build targets** — new `make` targets or cross-compile targets
+- **Features** — new metrics, new UI sections, new behaviors
+- **Dependencies** — added/removed Go modules
+
+When in doubt, update `README.md` in the same commit as the code change. Never let the README describe a state of the project that no longer exists.
+
 ## Further reading
 
 - `docs/ARCHITECTURE.md` — detailed component diagram and concurrency model
