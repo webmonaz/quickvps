@@ -2,6 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Dark theme (default) ── */
+:root {
+  --color-bg-primary:     #0f1117;
+  --color-bg-card:        #1a1d27;
+  --color-bg-card-hover:  #1e2130;
+  --color-border-base:    #2a2d3e;
+  --color-text-primary:   #e2e8f0;
+  --color-text-secondary: #8892a4;
+  --color-text-muted:     #4a5568;
+  --color-accent-blue:    #4c9ef5;
+  --color-accent-green:   #3ddc84;
+  --color-accent-yellow:  #fbbf24;
+  --color-accent-red:     #f87171;
+  --color-accent-purple:  #a78bfa;
+  --color-accent-cyan:    #22d3ee;
+}
+
+/* ── Light theme ── */
+html.light {
+  --color-bg-primary:     #f1f5f9;
+  --color-bg-card:        #ffffff;
+  --color-bg-card-hover:  #f8fafc;
+  --color-border-base:    #e2e8f0;
+  --color-text-primary:   #1e293b;
+  --color-text-secondary: #475569;
+  --color-text-muted:     #94a3b8;
+  --color-accent-blue:    #2563eb;
+  --color-accent-green:   #16a34a;
+  --color-accent-yellow:  #d97706;
+  --color-accent-red:     #dc2626;
+  --color-accent-purple:  #7c3aed;
+  --color-accent-cyan:    #0891b2;
+}
+
 @layer base {
   html {
     @apply bg-bg-primary text-text-primary;

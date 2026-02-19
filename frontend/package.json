@@ -11,10 +11,12 @@
   },
   "dependencies": {
     "chart.js": "^4.4.1",
+    "i18next": "^25.8.11",
     "immer": "^10.1.1",
     "react": "^18.3.1",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.3.1",
+    "react-i18next": "^16.5.4",
     "react-router-dom": "^6.26.2",
     "zustand": "^4.5.5"
   },

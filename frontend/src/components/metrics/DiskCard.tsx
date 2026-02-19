@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { DiskMetrics, DiskIOMetrics } from '@/types/metrics'
 import { Card } from '@/components/ui/Card'
 import { ProgressBar } from '@/components/ui/ProgressBar'
@@ -22,6 +23,7 @@ function areEqual(prev: DiskCardProps, next: DiskCardProps): boolean {
 
 export const DiskCard = memo(function DiskCard({ disk, io }: DiskCardProps) {
   const pct = Math.round(disk.percent)
+  const { t } = useTranslation()
 
   return (
     <Card>
@@ -36,9 +38,9 @@ export const DiskCard = memo(function DiskCard({ disk, io }: DiskCardProps) {
       </div>
       <ProgressBar percent={pct} className="my-2" />
       <div className="flex justify-between text-[10px] font-mono text-text-secondary mt-1">
-        <span>Used: {formatBytes(disk.used_bytes)}</span>
-        <span>Free: {formatBytes(disk.free_bytes)}</span>
-        <span>Total: {formatBytes(disk.total_bytes)}</span>
+        <span>{t('disk.used')}: {formatBytes(disk.used_bytes)}</span>
+        <span>{t('disk.free')}: {formatBytes(disk.free_bytes)}</span>
+        <span>{t('disk.total')}: {formatBytes(disk.total_bytes)}</span>
       </div>
       {io && (
         <div className="flex justify-between text-[10px] font-mono mt-1.5">

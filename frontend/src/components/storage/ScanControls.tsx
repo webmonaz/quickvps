@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '@/store'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
@@ -9,12 +10,13 @@ export const ScanControls = memo(function ScanControls() {
   const setScanPath  = useStore((s) => s.setScanPath)
   const scanResult   = useStore((s) => s.scanResult)
   const { startScan, cancelScan, isScanning } = useNcduScan()
+  const { t } = useTranslation()
 
   const statusText = (() => {
     if (!scanResult) return ''
-    if (scanResult.status === 'done')    return 'Scan complete'
-    if (scanResult.status === 'error')   return 'Error: ' + scanResult.error
-    if (scanResult.status === 'running') return 'Scanning ' + scanResult.path + '…'
+    if (scanResult.status === 'done')    return t('storage.scanComplete')
+    if (scanResult.status === 'error')   return `${t('storage.error')}: ` + scanResult.error
+    if (scanResult.status === 'running') return `${t('storage.scanning')} ${scanResult.path}…`
     return ''
   })()
 
@@ -28,7 +30,7 @@ export const ScanControls = memo(function ScanControls() {
         type="text"
         value={scanPath}
         onChange={(e) => setScanPath(e.target.value)}
-        placeholder="Path to scan"
+        placeholder={t('storage.pathPlaceholder')}
         className="bg-bg-primary border border-border-base rounded-base px-3 py-1.5 text-xs font-mono text-text-primary focus:outline-none focus:border-accent-blue"
       />
       <Button
@@ -36,11 +38,11 @@ export const ScanControls = memo(function ScanControls() {
         onClick={startScan}
         disabled={isScanning}
       >
-        Scan
+        {t('storage.scan')}
       </Button>
       {isScanning && (
         <Button variant="danger" onClick={cancelScan}>
-          Cancel
+          {t('storage.cancel')}
         </Button>
       )}
     </div>

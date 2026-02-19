@@ -1,0 +1,56 @@
+{
+  "header": {
+    "live": "Trực tiếp"
+  },
+  "cpu": {
+    "title": "CPU"
+  },
+  "memory": {
+    "title": "Bộ nhớ"
+  },
+  "swap": {
+    "title": "Swap",
+    "noSwap": "Không có swap"
+  },
+  "network": {
+    "title": "Mạng",
+    "recv": "Nhận",
+    "sent": "Gửi"
+  },
+  "networkInterfaces": {
+    "title": "Giao diện mạng",
+    "interface": "Giao diện",
+    "recvRate": "↓ Nhận/s",
+    "sentRate": "↑ Gửi/s",
+    "totalRecv": "Tổng nhận",
+    "totalSent": "Tổng gửi"
+  },
+  "disk": {
+    "title": "Lưu trữ",
+    "used": "Đã dùng",
+    "free": "Trống",
+    "total": "Tổng"
+  },
+  "diskIO": {
+    "title": "Đọc/Ghi ổ đĩa",
+    "read": "Đọc",
+    "write": "Ghi"
+  },
+  "storage": {
+    "title": "Phân tích lưu trữ (ncdu)",
+    "scan": "Quét",
+    "cancel": "Hủy",
+    "pathPlaceholder": "Đường dẫn để quét",
+    "scanComplete": "Quét hoàn thành",
+    "scanning": "Đang quét",
+    "error": "Lỗi"
+  },
+  "theme": {
+    "dark": "Tối",
+    "light": "Sáng"
+  },
+  "language": {
+    "en": "EN",
+    "vi": "VI"
+  }
+}

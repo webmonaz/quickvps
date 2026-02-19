@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '@/store'
 import { shallow } from 'zustand/shallow'
 import { Card } from '@/components/ui/Card'
@@ -8,19 +9,20 @@ import { formatBytes } from '@/lib/formatBytes'
 
 export const NetworkTable = memo(function NetworkTable() {
   const nets = useStore((s) => s.snapshot?.network ?? [], shallow)
+  const { t } = useTranslation()
 
   return (
     <Card>
-      <CardTitle>Network Interfaces</CardTitle>
+      <CardTitle>{t('networkInterfaces.title')}</CardTitle>
       <div className="overflow-auto max-h-64 pr-2">
         <table className="w-full text-xs font-mono">
           <thead className="sticky top-0 bg-bg-card z-10">
             <tr className="text-text-muted border-b border-border-base">
-              <th className="text-left pb-2 pr-4">Interface</th>
-              <th className="text-right pb-2 pr-4">↓ Recv/s</th>
-              <th className="text-right pb-2 pr-4">↑ Sent/s</th>
-              <th className="text-right pb-2 pr-4">Total Recv</th>
-              <th className="text-right pb-2 pr-4">Total Sent</th>
+              <th className="text-left pb-2 pr-4">{t('networkInterfaces.interface')}</th>
+              <th className="text-right pb-2 pr-4">{t('networkInterfaces.recvRate')}</th>
+              <th className="text-right pb-2 pr-4">{t('networkInterfaces.sentRate')}</th>
+              <th className="text-right pb-2 pr-4">{t('networkInterfaces.totalRecv')}</th>
+              <th className="text-right pb-2 pr-4">{t('networkInterfaces.totalSent')}</th>
             </tr>
           </thead>
           <tbody>

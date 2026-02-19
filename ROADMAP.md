@@ -6,7 +6,7 @@
 - Full feature parity with existing dashboard (CPU, Memory, Swap, Disk, Network, Storage Analyzer)
 - Dark mode only; English only; single-binary Go embed preserved
 
-## Phase 2 — Theme Toggle + Internationalization
+## Phase 2 — Theme Toggle + Internationalization ✅
 - Dark / Light mode toggle (CSS class on `<html>`)
 - i18n: English (default) + Vietnamese via react-i18next
 - Language and theme persisted in localStorage

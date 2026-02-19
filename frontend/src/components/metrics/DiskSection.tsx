@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '@/store'
 import { shallow } from 'zustand/shallow'
 import { DiskCard } from './DiskCard'
@@ -7,6 +8,7 @@ import type { DiskMetrics, DiskIOMetrics } from '@/types/metrics'
 export const DiskSection = memo(function DiskSection() {
   const disks  = useStore((s) => s.snapshot?.disks  ?? [], shallow)
   const diskIO = useStore((s) => s.snapshot?.disk_io ?? [], shallow)
+  const { t } = useTranslation()
 
   function findIO(disk: DiskMetrics): DiskIOMetrics | undefined {
     const shortDev = disk.device.split('/').pop() ?? ''
@@ -18,7 +20,7 @@ export const DiskSection = memo(function DiskSection() {
   if (disks.length === 0) return (
     <div>
       <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">
-        Storage
+        {t('disk.title')}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {[0, 1, 2, 3].map((i) => (
@@ -31,7 +33,7 @@ export const DiskSection = memo(function DiskSection() {
   return (
     <div>
       <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">
-        Storage
+        {t('disk.title')}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {disks.map((disk) => (

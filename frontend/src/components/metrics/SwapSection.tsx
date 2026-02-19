@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '@/store'
 import { shallow } from 'zustand/shallow'
 import { Card } from '@/components/ui/Card'
@@ -20,10 +21,11 @@ export const SwapSection = memo(function SwapSection() {
   )
 
   const pct = swap?.pct ?? 0
+  const { t } = useTranslation()
 
   return (
     <Card className="flex flex-col">
-      <CardTitle>Swap</CardTitle>
+      <CardTitle>{t('swap.title')}</CardTitle>
       <div className="relative h-28 flex items-end justify-center">
         <HalfGauge percent={pct} />
         <div className="absolute inset-0 flex items-center justify-center mt-8">
@@ -36,7 +38,7 @@ export const SwapSection = memo(function SwapSection() {
         {swap
           ? swap.total > 0
             ? `${formatBytes(swap.used)} / ${formatBytes(swap.total)}`
-            : 'No swap'
+            : t('swap.noSwap')
           : '—'}
       </div>
     </Card>

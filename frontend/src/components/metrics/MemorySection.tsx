@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '@/store'
 import { shallow } from 'zustand/shallow'
 import { Card } from '@/components/ui/Card'
@@ -23,10 +24,11 @@ export const MemorySection = memo(function MemorySection() {
   )
 
   const pct = mem?.pct ?? 0
+  const { t } = useTranslation()
 
   return (
     <Card className="flex flex-col">
-      <CardTitle>Memory</CardTitle>
+      <CardTitle>{t('memory.title')}</CardTitle>
       <div className="relative h-28 flex items-end justify-center">
         <HalfGauge percent={pct} />
         <div className="absolute inset-0 flex items-center justify-center mt-8">

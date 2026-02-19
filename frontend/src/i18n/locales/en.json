@@ -1,0 +1,56 @@
+{
+  "header": {
+    "live": "Live"
+  },
+  "cpu": {
+    "title": "CPU"
+  },
+  "memory": {
+    "title": "Memory"
+  },
+  "swap": {
+    "title": "Swap",
+    "noSwap": "No swap"
+  },
+  "network": {
+    "title": "Network",
+    "recv": "Recv",
+    "sent": "Sent"
+  },
+  "networkInterfaces": {
+    "title": "Network Interfaces",
+    "interface": "Interface",
+    "recvRate": "↓ Recv/s",
+    "sentRate": "↑ Sent/s",
+    "totalRecv": "Total Recv",
+    "totalSent": "Total Sent"
+  },
+  "disk": {
+    "title": "Storage",
+    "used": "Used",
+    "free": "Free",
+    "total": "Total"
+  },
+  "diskIO": {
+    "title": "Disk I/O",
+    "read": "Read",
+    "write": "Write"
+  },
+  "storage": {
+    "title": "Storage Analyzer (ncdu)",
+    "scan": "Scan",
+    "cancel": "Cancel",
+    "pathPlaceholder": "Path to scan",
+    "scanComplete": "Scan complete",
+    "scanning": "Scanning",
+    "error": "Error"
+  },
+  "theme": {
+    "dark": "Dark",
+    "light": "Light"
+  },
+  "language": {
+    "en": "EN",
+    "vi": "VI"
+  }
+}
