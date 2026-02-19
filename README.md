@@ -30,7 +30,7 @@ Open `http://your-server:8080` and log in with `admin` / `secret`.
 
 ### Build from source
 
-Requires Go 1.21+.
+Requires Go 1.21+ and Node.js 18+.
 
 ```bash
 git clone https://github.com/webmonaz/quickvps
@@ -38,6 +38,27 @@ cd quickvps
 make build          # current OS/arch
 make linux          # cross-compile → quickvps-linux (amd64)
 make linux-arm64    # cross-compile → quickvps-linux-arm64 (e.g. Oracle Cloud free tier)
+make build-full     # build frontend then cross-compile Go for Linux amd64
+```
+
+### Frontend development
+
+The UI lives in `frontend/` (React 18 + TypeScript + TailwindCSS + Vite). The
+Vite dev server proxies `/api` and `/ws` to the Go backend at `:8080`.
+
+```bash
+# Terminal 1 — run Go backend
+./quickvps --password=dev
+
+# Terminal 2 — run Vite dev server with HMR
+cd frontend
+npm install
+npm run dev          # → http://localhost:5173
+
+# Build for production (outputs to web/ for Go embed)
+npm run build
+# or from project root:
+make frontend
 ```
 
 ## Usage
@@ -138,14 +159,18 @@ quickvps/
 │   └── server/                # HTTP layer
 │       ├── server.go          # Mux, auth middleware, logging middleware
 │       └── handlers.go        # REST + WebSocket handlers
-├── web/                       # Embedded assets (//go:embed web)
+├── frontend/                  # React 18 + TypeScript + TailwindCSS source
+│   ├── src/
+│   │   ├── components/        # UI, charts, layout, metrics, storage
+│   │   ├── hooks/             # useWebSocket, useServerInfo, useNcduScan
+│   │   ├── store/             # Zustand store with Immer
+│   │   ├── types/             # TypeScript interfaces for API contracts
+│   │   ├── lib/               # formatBytes, thresholdColor, chartConfig
+│   │   └── pages/             # DashboardPage (/ route)
+│   └── vite.config.ts         # Builds to ../web/ for Go embed
+├── web/                       # Embedded assets (//go:embed web) — built by Vite
 │   ├── index.html
-│   ├── css/style.css
-│   └── js/
-│       ├── app.js             # WS client + dashboard orchestration
-│       ├── gauges.js          # Chart.js half-ring gauge helpers
-│       ├── charts.js          # 60-point rolling line chart helpers
-│       └── ncdu.js            # Collapsible directory tree renderer
+│   └── assets/                # Hashed JS/CSS bundles
 ├── scripts/
 │   ├── quickvps.service       # systemd unit
 │   └── install.sh             # Binary copy + systemd enable
@@ -162,7 +187,9 @@ quickvps/
 | [`github.com/gorilla/websocket`](https://github.com/gorilla/websocket) | WebSocket server |
 | [`github.com/shirou/gopsutil/v3`](https://github.com/shirou/gopsutil) | Cross-platform system metrics |
 
-The web UI uses [Chart.js](https://www.chartjs.org/) loaded from CDN — no build step required.
+The web UI uses [Chart.js](https://www.chartjs.org/) bundled via Vite with `react-chartjs-2`.
+
+**Frontend dependencies** (see `frontend/package.json`): React 18, react-router-dom, Zustand, Immer, chart.js, react-chartjs-2, TailwindCSS, Vite.
 
 ## License
 

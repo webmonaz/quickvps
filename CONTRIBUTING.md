@@ -31,6 +31,7 @@ QuickVPS has three design principles that govern every decision:
 ### Prerequisites
 
 - Go 1.21 or newer
+- Node.js 18 or newer (`npm`)
 - `make`
 - A Linux target for integration testing (or a VM)
 
@@ -40,20 +41,21 @@ QuickVPS has three design principles that govern every decision:
 git clone https://github.com/webmonaz/quickvps
 cd quickvps
 go mod download
-make build
+cd frontend && npm install && cd ..
+make build-full     # builds React frontend then Go binary
 ```
 
 ### Run locally
 
 ```bash
-# Start with auth disabled (development only)
-./quickvps
-
-# Start with auth enabled
+# Terminal 1 — Go backend
 ./quickvps --password=dev
+
+# Terminal 2 — Vite dev server with HMR (proxies /api and /ws to :8080)
+cd frontend && npm run dev
 ```
 
-Open `http://localhost:8080`.
+Open `http://localhost:5173` for development (HMR) or `http://localhost:8080` for the embedded build.
 
 ---
 
@@ -66,11 +68,15 @@ Read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) before making structural cha
 ### Making changes
 
 ```bash
-# Build and run after every change
+# Go changes: build and run
 make build && ./quickvps --password=dev
 
-# Verify cross-compile still works before opening a PR
-make linux
+# UI changes: use the Vite dev server (no recompile needed)
+cd frontend && npm run dev
+
+# Before PR: build full stack and verify cross-compile
+make build-full
+make linux-arm64
 ```
 
 ### Testing
@@ -95,8 +101,10 @@ There is no automated integration test suite yet — manual verification on a Li
 1. Add the field to the appropriate struct in `internal/metrics/types.go`.
 2. Populate it in the relevant `collect*` function (`cpu.go`, `memory.go`, etc.).
 3. The field will automatically appear in `/api/metrics` and the WebSocket stream.
-4. Add rendering logic in `web/js/app.js` and any required HTML in `web/index.html`.
-5. Follow the design tokens in [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for any new UI elements.
+4. Add the TypeScript type in `frontend/src/types/metrics.ts`.
+5. Subscribe to the new field in the relevant section component (e.g. `CpuSection.tsx`) via a narrow Zustand selector.
+6. Add any required JSX to the component and style it using Tailwind token classes.
+7. Follow the design tokens in [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for colors and thresholds.
 
 ### Adding a new API endpoint
 
@@ -107,10 +115,12 @@ There is no automated integration test suite yet — manual verification on a Li
 
 ### Modifying the web UI
 
-- All styles go in `web/css/style.css`. No inline styles except dynamically computed values (widths, colors driven by data).
-- All CSS values must use the design tokens defined in `:root`. Do not hardcode color hex values in HTML or JS — reference the CSS variables.
-- Chart.js is loaded from CDN. Do not vendor it or add a build step.
-- See [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for color thresholds, spacing, and component patterns.
+- All UI source lives in `frontend/src/`. Do not edit `web/` directly — it is the Vite build output.
+- Use Tailwind token classes (`text-accent-green`, `bg-bg-card`, etc.) for all colors. Never write bare hex in JSX.
+- Use `getThresholdHex(pct)` from `src/lib/thresholdColor.ts` when a hex string is required (Chart.js dataset colors).
+- All component files export named exports (`export const Foo = memo(...)`). Pages use `export default` for lazy loading.
+- See [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for color tokens, thresholds, component patterns, and the Chart.js ref pattern.
+- After UI changes run `npm run build && npm run lint` in `frontend/` before opening a PR.
 
 ---
 
@@ -125,18 +135,20 @@ There is no automated integration test suite yet — manual verification on a Li
 - Prefer returning concrete types over interfaces in internal packages.
 - Keep functions short. If a function is more than ~50 lines, consider splitting it.
 
-### JavaScript
+### TypeScript / React
 
-- Vanilla ES6+. No frameworks, no transpilers, no `npm`.
-- Each file exposes exactly one namespace on `window` (e.g., `window.GaugeHelper`, `window.ChartHelper`).
-- No `var`. Use `const` by default, `let` only when reassignment is needed.
-- DOM manipulation goes in `app.js`. Chart helpers stay in `gauges.js` / `charts.js`. Tree rendering stays in `ncdu.js`.
+- Strict TypeScript (`"strict": true`). `@typescript-eslint/no-explicit-any` is an ESLint error.
+- Use `import type` for type-only imports (`@typescript-eslint/consistent-type-imports` is enforced).
+- All components are named exports wrapped in `React.memo`. Props interfaces are co-located in the same file.
+- `react-hooks/exhaustive-deps` is set to `error` — do not suppress it without strong justification.
+- No `useState` for data driven by the Zustand store — use selectors. No `useState` for Chart.js data — use `useRef`.
+- See Zustand selector pattern and Chart.js ref pattern in `CLAUDE.md` before touching chart or store code.
 
-### CSS
+### CSS / Tailwind
 
-- Use CSS custom properties (`var(--token)`) for every color, radius, and spacing value. Never write a bare hex color.
-- Class names use BEM-lite: `block`, `block-element`, `block--modifier`.
+- Use Tailwind token classes defined in `tailwind.config.ts` for all colors. No bare hex in JSX.
 - No `!important`.
+- Dark mode only in Phase 1 — the `dark` class is set on `<html>` at load time.
 
 ---
 
@@ -153,6 +165,7 @@ There is no automated integration test suite yet — manual verification on a Li
    ```bash
    go vet ./...
    go test -race ./...
+   cd frontend && npm run build && npm run lint
    make linux          # cross-compile must succeed
    ```
 

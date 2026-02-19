@@ -26,3 +26,11 @@ coverage.out
 
 # Screenshots added to docs (tracked separately if needed)
 docs/screenshot.png
+
+# Node / frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.tsbuildinfo
+frontend/tsconfig.app.tsbuildinfo
+frontend/tsconfig.node.tsbuildinfo

@@ -276,13 +276,61 @@ Both must complete without errors. Always run this before opening a PR, even for
 
 ---
 
+## Frontend Tests
+
+The React frontend (`frontend/`) uses **Vite + TypeScript** — type checking is the first gate.
+
+### Type check + build
+
+```bash
+cd frontend
+npm run build    # tsc -b && vite build — zero tolerance for TS errors
+npm run lint     # ESLint with react-hooks/exhaustive-deps: error
+```
+
+Both must pass before opening a PR that touches `frontend/`.
+
+### Unit tests (Phase 5 — planned)
+
+When Vitest is added, cover:
+
+- `src/lib/formatBytes.ts` — boundary values (0, 1023, 1024, 1024³)
+- `src/lib/thresholdColor.ts` — boundary values (59, 60, 84, 85)
+- `src/store/index.ts` — `setSnapshot` correctly pushes to history arrays
+
+### Component tests (Phase 5 — planned)
+
+React Testing Library will cover:
+
+- `ProgressBar` — renders correct width and color class for each threshold zone
+- `HalfGauge` — canvas is mounted; Chart.js `update` is called with new data on re-render
+- `NcduTreeNode` — lazy render: children absent until first click; collapse/expand toggle
+
+### Manual UI checklist
+
+Before merging any `frontend/` change, verify in the browser (use `npm run dev` against a running Go backend):
+
+- [ ] All three gauges (CPU, Memory, Swap) render and animate on each tick
+- [ ] Per-core CPU bars update
+- [ ] Network and Disk I/O rolling charts scroll continuously
+- [ ] Network interfaces table populates
+- [ ] Disk cards show correct usage and I/O rates
+- [ ] Storage Analyzer: scan triggers spinner → tree renders on completion → cancel works
+- [ ] NcduTree: top 2 levels pre-expanded; deeper levels expand on click (lazy render)
+- [ ] WebSocket disconnect → red banner appears within 3 s
+- [ ] WebSocket reconnect → banner disappears, metrics resume
+- [ ] Header shows hostname and OS from `/api/info`
+
+---
+
 ## CI (future)
 
-When a CI pipeline is added, the minimum required checks are:
+When a CI pipeline is added (Phase 5), the minimum required checks are:
 
 ```yaml
 - go vet ./...
 - go test -race ./...
+- cd frontend && npm ci && npm run build && npm run lint
 - GOOS=linux GOARCH=amd64 go build -o /dev/null .
 - GOOS=linux GOARCH=arm64 go build -o /dev/null .
 ```

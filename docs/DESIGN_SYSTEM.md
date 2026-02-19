@@ -1,117 +1,113 @@
 # Design System
 
-QuickVPS uses a fixed dark theme with a small set of CSS custom properties. Every visual element in the UI is derived from these tokens. **Never hardcode a hex color in HTML or JavaScript** — always reference the variable.
+QuickVPS uses a fixed dark theme. All design tokens are expressed as **Tailwind CSS utility classes** referencing custom colors defined in `frontend/tailwind.config.ts`. Never hardcode a hex color in JSX or inline styles — always use the token class or `getThresholdHex()` from `src/lib/thresholdColor.ts`.
 
 ---
 
 ## Color Tokens
 
-All tokens are defined in `:root` in `web/css/style.css`.
+Defined in `frontend/tailwind.config.ts` under `theme.extend.colors` and mirrored as CSS custom properties in `frontend/src/index.css` via Tailwind's base layer.
 
 ### Backgrounds
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--bg-primary` | `#0f1117` | Page background |
-| `--bg-card` | `#1a1d27` | Card / header background |
-| `--bg-card-hover` | `#1e2130` | Card hover state, tree node hover |
+| Tailwind class | Hex | Usage |
+|----------------|-----|-------|
+| `bg-bg-primary` | `#0f1117` | Page background |
+| `bg-bg-card` | `#1a1d27` | Card / header background |
+| `bg-bg-card-hover` | `#1e2130` | Card hover, tree node hover |
 
 ### Borders
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--border` | `#2a2d3e` | All borders, chart grid lines, progress track |
+| Tailwind class | Hex | Usage |
+|----------------|-----|-------|
+| `border-border-base` | `#2a2d3e` | All borders, chart grid lines, progress track |
 
 ### Text
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--text-primary` | `#e2e8f0` | Body text, values, labels |
-| `--text-secondary` | `#8892a4` | Subtitles, legends, table headers |
-| `--text-muted` | `#4a5568` | Chart tick labels, expand icons, file icons |
+| Tailwind class | Hex | Usage |
+|----------------|-----|-------|
+| `text-text-primary` | `#e2e8f0` | Body text, values, labels |
+| `text-text-secondary` | `#8892a4` | Subtitles, legends, table headers |
+| `text-text-muted` | `#4a5568` | Chart tick labels, expand icons |
 
 ### Accent Colors
 
-| Token | Value | Semantic meaning |
-|-------|-------|------------------|
-| `--accent-blue` | `#4c9ef5` | Primary action, default fill, interface names, read I/O |
-| `--accent-green` | `#3ddc84` | OK state (< 60% usage), network recv, logo accent |
-| `--accent-yellow` | `#fbbf24` | Warning state (60–84% usage) |
-| `--accent-red` | `#f87171` | Danger state (≥ 85% usage), network sent |
-| `--accent-purple` | `#a78bfa` | Write I/O, memory cache |
-| `--accent-cyan` | `#22d3ee` | Memory buffers |
+| Tailwind class | Hex | Semantic meaning |
+|----------------|-----|------------------|
+| `text-accent-blue` / `bg-accent-blue` | `#4c9ef5` | Primary action, default fill, interface names, read I/O |
+| `text-accent-green` / `bg-accent-green` | `#3ddc84` | OK state (< 60% usage), network recv, logo accent |
+| `text-accent-yellow` / `bg-accent-yellow` | `#fbbf24` | Warning state (60–84% usage) |
+| `text-accent-red` / `bg-accent-red` | `#f87171` | Danger state (≥ 85% usage), network sent |
+| `text-accent-purple` / `bg-accent-purple` | `#a78bfa` | Write I/O, memory cache |
+| `text-accent-cyan` / `bg-accent-cyan` | `#22d3ee` | Memory buffers |
 
 ---
 
 ## Usage Thresholds
 
-Apply these thresholds consistently across **gauges, disk bars, core bars, and tree percentage bars**:
+Apply these thresholds consistently across **gauges, disk bars, core bars, and tree percentage bars**.
 
-| Range | Color token | CSS class modifier |
-|-------|-------------|-------------------|
-| 0 – 59% | `--accent-green` | _(default, no class)_ |
-| 60 – 84% | `--accent-yellow` | `.warn` |
-| ≥ 85% | `--accent-red` | `.danger` |
+| Range | Tailwind class | Hex |
+|-------|----------------|-----|
+| 0 – 59% | `text-accent-green` | `#3ddc84` |
+| 60 – 84% | `text-accent-yellow` | `#fbbf24` |
+| ≥ 85% | `text-accent-red` | `#f87171` |
 
-**JavaScript pattern** (in `app.js` and `ncdu.js`):
+**TypeScript helpers** (`src/lib/thresholdColor.ts`):
 
-```js
-function thresholdColor(pct) {
-  if (pct < 60) return 'var(--accent-green)';
-  if (pct < 85) return 'var(--accent-yellow)';
-  return 'var(--accent-red)';
-}
+```typescript
+// Returns a Tailwind text-color class
+getThresholdColor(pct: number): string
+
+// Returns a hex string (for Chart.js dataset colors)
+getThresholdHex(pct: number): string
+
+// Returns a Tailwind bg-color class (for progress bars)
+getThresholdBgColor(pct: number): string
 ```
 
-**CSS pattern** (applied to fill elements):
+Constants are in `src/constants/thresholds.ts`:
 
-```css
-.disk-bar-fill           { background: var(--accent-blue); }
-.disk-bar-fill.warn      { background: var(--accent-yellow); }
-.disk-bar-fill.danger    { background: var(--accent-red); }
+```typescript
+export const THRESHOLD_WARN   = 60
+export const THRESHOLD_DANGER = 85
 ```
-
-Gauge colors are set dynamically in `gauges.js` `updateGauge()` — the Chart.js dataset color is updated on every tick.
 
 ---
 
 ## Typography
 
-| Context | Font stack | Size | Weight |
-|---------|-----------|------|--------|
-| Body text | system-ui (`-apple-system, BlinkMacSystemFont, 'Segoe UI'`) | 14px | 400 |
-| Monospace (values, paths, interfaces) | `'JetBrains Mono', 'Fira Code', 'Consolas', monospace` | 12–13px | 400 |
-| Card titles | Body stack | 11px | 600, uppercase, letter-spacing 1px |
-| Gauge percentage | Mono stack | 28px | 700 |
-| Large metric values | Mono stack | 20px | 700 |
+| Context | Classes | Notes |
+|---------|---------|-------|
+| Body text | _(Tailwind default)_ | System UI, 14px, 400 |
+| Monospace values / paths | `font-mono text-xs` | JetBrains Mono stack |
+| Card titles | `text-xs font-semibold uppercase tracking-wider text-text-secondary` | Via `CardTitle` component |
+| Gauge percentage | `text-2xl font-bold font-mono` | Inside `HalfGauge` wrapper |
 
-The `--font-mono` token must be used for all numeric values, file paths, interface names, and any data that benefits from fixed-width rendering.
+The `font-mono` class maps to `'JetBrains Mono', 'Fira Code', 'Consolas', monospace` (defined in `tailwind.config.ts`).
 
 ---
 
 ## Spacing
 
-No spacing token variables exist — use these raw values consistently:
+Tailwind's default scale is used throughout. Key values:
 
-| Purpose | Value |
-|---------|-------|
-| Page padding | 24px |
-| Card padding | 20px |
-| Card padding (compact) | 16px |
-| Gap between grid cards | 16px |
-| Gap between inline items | 6–8px |
-| Micro gap | 4px |
+| Purpose | Tailwind |
+|---------|----------|
+| Page padding | `p-4` (16px) |
+| Card padding | `p-4` (16px) |
+| Grid gap | `gap-4` (16px) |
+| Inline item gap | `gap-2` – `gap-3` (8–12px) |
 
 ---
 
 ## Border Radius
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--radius` | `8px` | Buttons, inputs, small elements |
-| `--radius-lg` | `12px` | Cards |
-
-Progress bars and chart fills use `3–4px` radius (hardcoded inline — acceptable for these small decorative elements).
+| Tailwind class | Value | Usage |
+|----------------|-------|-------|
+| `rounded-card` | `12px` | Cards |
+| `rounded-base` | `8px` | Buttons, inputs |
+| `rounded-full` | 9999px | Progress bars, status dot, spinner |
 
 ---
 
@@ -119,124 +115,122 @@ Progress bars and chart fills use `3–4px` radius (hardcoded inline — accepta
 
 ### Card
 
-The base container for all dashboard sections.
+Base container. Use the `Card` component (`src/components/ui/Card.tsx`):
 
-```html
-<div class="card">
-  <div class="card-title">Section Name</div>
-  <!-- content -->
-</div>
+```tsx
+<Card className="optional-extra-classes">
+  <CardTitle>Section Name</CardTitle>
+  {/* content */}
+</Card>
 ```
 
-- Background: `--bg-card`
-- Border: `1px solid var(--border)`
-- Border-radius: `var(--radius-lg)`
-- Padding: `20px` (standard) or `16px` (compact `.disk-card`)
+- Background: `bg-bg-card`
+- Border: `border border-border-base`
+- Radius: `rounded-card`
+- Padding: `p-4`
 
-### Gauge (half-ring)
+### HalfGauge
 
-Chart.js doughnut configured as a half-circle:
-- `circumference: 180°` (Math.PI radians)
-- `rotation: -90°` (-Math.PI/2 radians)
-- `cutout: 75%`
-- Canvas wrapper: `160px × 100px`
-- The percentage label is absolutely positioned at the bottom-center of the wrapper
+Chart.js doughnut configured as a half-circle. Use `HalfGauge` (`src/components/charts/HalfGauge.tsx`):
 
-Created with `GaugeHelper.createGauge(canvasId)`, updated with `GaugeHelper.updateGauge(chart, pct)`.
-
-### Progress Bar
-
-Used for disk usage, memory breakdown:
-
-```html
-<div class="disk-bar">
-  <div class="disk-bar-fill [warn|danger]" style="width: X%"></div>
-</div>
+```tsx
+<HalfGauge percent={cpuPct} />
 ```
 
-Height: `6px`. Track background: `--border`. Fill uses threshold color classes.
+Config:
+- `circumference: 180`, `rotation: -90`
+- `cutout: '75%'`
+- `animation: { duration: 400, easing: 'easeOutQuart' }`
+- Chart instance lives in `useRef` — no React re-render on update, only imperative `chart.update('none')`
 
-### Rolling Line Chart
+### ProgressBar
 
-60-point window, no animation, `tension: 0.3`, filled area at 15% opacity.
+Threshold-color-aware horizontal bar. Use `ProgressBar` (`src/components/ui/ProgressBar.tsx`):
 
-- Y-axis: right-aligned, 4 ticks max, formatted with `ChartHelper.formatBytes`
-- X-axis: hidden
-- Grid: horizontal only, color `--border`
+```tsx
+<ProgressBar percent={diskPct} />
+```
 
-Created with `ChartHelper.createLineChart(id, datasets, yFormatter)`.
-Updated with `ChartHelper.pushData(chart, value1, value2)` — shifts oldest point, pushes new value.
+Height: `h-1.5` (6px). Track: `bg-border-base`. Fill color from `getThresholdHex()`.
 
-### Collapsible Directory Tree
+### RollingLineChart
 
-Rendered by `NcduRenderer.renderNcduTree(container, scanResult)`.
+60-point window, no animation. Use `RollingLineChart` (`src/components/charts/RollingLineChart.tsx`):
 
-- Top 2 levels rendered and expanded on initial render
-- Deeper levels rendered lazily on first expand (click)
-- Each row: `expand-icon | type-icon | name | bar | pct% | size`
-- Bar width = `entry.dsize / parent.dsize * 100%`
-- Bar color follows the same threshold rules (> 50% parent = red, > 20% = yellow, else blue)
-- Indent per level: `20px` left margin on `ul.tree-children`
+```tsx
+<RollingLineChart
+  datasets={[
+    { label: 'Recv', color: '#3ddc84', data: recvHistory },
+    { label: 'Sent', color: '#f87171', data: sentHistory },
+  ]}
+/>
+```
+
+Chart instance in `useRef`. Y-axis: 4 ticks, bytes/s format. X-axis: hidden.
 
 ### Button
 
-```html
-<button class="btn btn-primary">Label</button>
-<button class="btn btn-danger">Cancel</button>
+```tsx
+<Button variant="primary" onClick={handleScan}>Scan</Button>
+<Button variant="danger"  onClick={handleCancel}>Cancel</Button>
+<Button variant="ghost"   onClick={handleClose}>Close</Button>
 ```
 
-- `.btn-primary`: `--accent-blue` background, white text
-- `.btn-danger`: transparent background, `--accent-red` border and text
-- Disabled state: `opacity: 0.5`, `cursor: not-allowed`
+Variants in `src/components/ui/Button.tsx`. Disabled state via HTML `disabled` prop.
 
-### Status Spinner
+### NcduTree / NcduTreeNode
 
-```html
-<div class="spinner" style="display:none"></div>
+Collapsible directory tree. `NcduTreeNode` lazy-renders children on first expand:
+
+```typescript
+const [isExpanded,  setIsExpanded]  = useState(depth < 2)
+const [hasRendered, setHasRendered] = useState(depth < 2)
+// Children only mounted when hasRendered=true
 ```
 
-CSS `border-top-color: var(--accent-blue)` on a circular element, `animation: spin 0.7s linear infinite`.
+Bar color rules (based on `entry.dsize / parent.dsize`):
+- > 50% → `#f87171` (red)
+- > 20% → `#fbbf24` (yellow)
+- else → `#4c9ef5` (blue)
 
 ---
 
 ## Layout Grid
 
-Three predefined grid helpers; choose based on content:
+Tailwind responsive grid classes. All grids collapse to 1 column on mobile (`sm:` breakpoint at 640px).
 
-| Class | Columns | Usage |
-|-------|---------|-------|
-| `.grid-3` | 3 equal columns | Top gauges (CPU / Mem / Swap) |
-| `.grid-2` | 2 equal columns | Chart pairs (Network / Disk I/O) |
-| `.grid-4` | Auto-fill, min 280px | Disk cards |
-
-Breakpoints:
-- Below 1200px: `.grid-3` collapses to 2 columns
-- Below 768px: all grids collapse to 1 column; `.header-info` is hidden
+| Section | Classes |
+|---------|---------|
+| Gauges (CPU / Mem / Swap) | `grid grid-cols-1 sm:grid-cols-3 gap-4` |
+| Charts (Network / Disk I/O) | `grid grid-cols-1 sm:grid-cols-2 gap-4` |
+| Disk cards | `grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3` |
 
 ---
 
 ## Animation
 
-- Gauge updates: `duration: 400ms, easing: easeOutQuart` (Chart.js)
-- Line chart updates: `animation: false` (real-time data, smoothness via `tension: 0.3`)
-- Progress bar width transitions: `transition: width 0.5s ease`
-- Connection banner: `slideIn` keyframe (translate + fade, 0.2s)
-- Status dot pulse: `opacity` keyframe 2s infinite
-- Spinner: `rotate` 0.7s linear infinite
+| Element | Behavior |
+|---------|----------|
+| Gauge update | Chart.js `duration: 400ms, easing: easeOutQuart` |
+| Line chart update | `animation: false` (real-time data) |
+| Progress bar | Tailwind `transition-[width] duration-300` |
+| Status dot (connected) | `shadow-[0_0_6px_#3ddc84]` glow |
+| Spinner | Tailwind `animate-spin` |
 
 ---
 
 ## Do's and Don'ts
 
 **Do:**
-- Use `var(--token)` for every color
-- Use `.warn` and `.danger` classes for threshold-driven color changes
-- Use `--font-mono` for all numeric data
-- Keep all styles in `style.css`; JavaScript sets `style.width`, `style.height`, and `style.color` only for dynamically computed values
+- Use Tailwind token classes (`text-accent-green`, `bg-bg-card`, etc.) for every color
+- Use `getThresholdHex(pct)` for Chart.js dataset colors (which require hex strings)
+- Use `font-mono` for all numeric data, file paths, interface names
+- Keep all components in `src/components/` and follow `React.memo` strategy from `CLAUDE.md`
+- Use narrow Zustand selectors to avoid re-renders on every 2 s WS push
 
 **Don't:**
-- Hardcode `#hex` or `rgb()` values in HTML attributes or JavaScript strings (exception: Chart.js dataset colors, which must be valid CSS color strings — use `var()` inside `getComputedStyle` if needed, or reference the hex constants in `gauges.js`)
-- Add new CSS classes without a corresponding design token
-- Use `!important`
-- Add light-mode styles — this tool is dark-only
-- Use inline `<style>` blocks in `index.html`
+- Hardcode `#hex` or `rgb()` values in JSX or inline styles
+- Access `useStore(s => s.snapshot)` directly (subscribes to the whole snapshot — re-renders every 2 s)
+- Use `useState` for Chart.js data — use `useRef` + imperative update
+- Add light-mode styles — this tool is dark-only in Phase 1
+- Add npm packages without updating `CLAUDE.md` and `README.md`

@@ -149,16 +149,32 @@ Auth middleware is only applied when `--password` is non-empty. If disabled, a w
 
 ---
 
-### `web/` — Browser UI
+### `frontend/` — React UI Source
 
-Single-page application with no build step. Three JS namespaces loaded in order:
+React 18 + TypeScript + TailwindCSS single-page application built with Vite. Source lives in `frontend/src/`; Vite emits production assets directly into `web/` (the Go embed target). There is **no runtime dependency on Node.js** — the Go binary embeds the compiled output.
 
-1. **`GaugeHelper`** (gauges.js) — creates and updates Chart.js doughnut gauges
-2. **`ChartHelper`** (charts.js) — creates and updates rolling line charts; provides `formatBytes`
-3. **`NcduRenderer`** (ncdu.js) — builds a DOM tree from a `DirEntry` structure
-4. **`app.js`** — orchestrates everything: WebSocket connection, snapshot rendering, ncdu UI
+Key layers:
 
-The WS client in `app.js` reconnects automatically every 3 seconds on close. All dashboard updates are driven by WS messages; the REST endpoints are only used for initial page load (`/api/info`) and ncdu result fetch (`/api/ncdu/status`).
+- **`src/store/index.ts`** — Zustand store (Immer + subscribeWithSelector). Holds the latest `Snapshot`, 60-point rolling history arrays for network and disk I/O, ncdu scan state, and connection status.
+- **`src/hooks/useWebSocket.ts`** — opens the WS connection, dispatches `setSnapshot` on every message, calls `onNcduReady` callback when `ncdu_ready: true` arrives, auto-reconnects after 3 s.
+- **`src/hooks/useServerInfo.ts`** — fetches `/api/info` once on mount.
+- **`src/components/charts/`** — `HalfGauge` and `RollingLineChart` hold Chart.js instances in `useRef`. Updates are imperative mutations (`chart.data.datasets[0].data = [...]; chart.update('none')`); the canvas DOM node never re-renders.
+- **`src/components/metrics/`** — each section selects only the fields it needs from the store via narrow Zustand selectors to prevent unnecessary re-renders on each 2 s push.
+
+All dashboard updates are driven by WS messages; the REST endpoints are only used for initial page load (`/api/info`) and ncdu result fetch (`/api/ncdu/status`).
+
+**Dev workflow:**
+```
+Terminal 1: ./quickvps --password=dev        # Go backend on :8080
+Terminal 2: cd frontend && npm run dev       # Vite HMR on :5173
+```
+Vite proxies `/api` and `/ws` to `:8080`, so the dev server is a full live preview.
+
+**Production build:**
+```bash
+cd frontend && npm run build   # or: make frontend
+```
+Emits hashed bundles to `web/assets/` and `web/index.html`, then `make linux` embeds them into the binary.
 
 ---
 
@@ -204,7 +220,7 @@ fileServer := http.FileServer(http.FS(webSub))
 
 The result is that browser requests for `/css/style.css` serve `web/css/style.css` from the embedded FS, with no disk I/O at runtime.
 
-**Consequence:** every change to `web/` requires a recompile. There is no "watch mode" — run `make build && ./quickvps --password=dev` after each UI change during development.
+**Consequence for Go:** every change to `web/` (the Vite build output) requires a recompile. For UI development use `npm run dev` inside `frontend/` — the Vite dev server proxies the Go API and serves the app with HMR. Run `make frontend && make build` to cut a new binary with updated assets.
 
 ---
 
