@@ -89,7 +89,7 @@ export const RollingLineChart = memo(function RollingLineChart({ datasets }: Rol
     chart.update('none')
   }, [datasets])
 
-  return <canvas ref={canvasRef} />
+  return <canvas ref={canvasRef} className="block w-full h-full" />
 }, areEqual)
 
 function fmtBytes(b: number): string {

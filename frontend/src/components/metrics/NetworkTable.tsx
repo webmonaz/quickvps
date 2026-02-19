@@ -12,15 +12,15 @@ export const NetworkTable = memo(function NetworkTable() {
   return (
     <Card>
       <CardTitle>Network Interfaces</CardTitle>
-      <div className="overflow-x-auto">
+      <div className="overflow-auto max-h-64 pr-2">
         <table className="w-full text-xs font-mono">
-          <thead>
+          <thead className="sticky top-0 bg-bg-card z-10">
             <tr className="text-text-muted border-b border-border-base">
               <th className="text-left pb-2 pr-4">Interface</th>
               <th className="text-right pb-2 pr-4">↓ Recv/s</th>
               <th className="text-right pb-2 pr-4">↑ Sent/s</th>
               <th className="text-right pb-2 pr-4">Total Recv</th>
-              <th className="text-right pb-2">Total Sent</th>
+              <th className="text-right pb-2 pr-4">Total Sent</th>
             </tr>
           </thead>
           <tbody>
@@ -30,7 +30,7 @@ export const NetworkTable = memo(function NetworkTable() {
                 <td className="py-1.5 pr-4 text-right text-accent-green">{formatBps(n.recv_bps)}</td>
                 <td className="py-1.5 pr-4 text-right text-accent-red">{formatBps(n.sent_bps)}</td>
                 <td className="py-1.5 pr-4 text-right text-text-secondary">{formatBytes(n.total_recv)}</td>
-                <td className="py-1.5 text-right text-text-secondary">{formatBytes(n.total_sent)}</td>
+                <td className="py-1.5 pr-4 text-right text-text-secondary">{formatBytes(n.total_sent)}</td>
               </tr>
             ))}
           </tbody>

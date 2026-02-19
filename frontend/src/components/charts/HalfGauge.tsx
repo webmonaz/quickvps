@@ -39,5 +39,5 @@ export const HalfGauge = memo(function HalfGauge({ percent }: HalfGaugeProps) {
     chart.update('none')
   }, [percent])
 
-  return <canvas ref={canvasRef} />
+  return <canvas ref={canvasRef} className="block w-full h-full" />
 }, areEqual)

@@ -15,7 +15,18 @@ export const DiskSection = memo(function DiskSection() {
     )
   }
 
-  if (disks.length === 0) return null
+  if (disks.length === 0) return (
+    <div>
+      <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">
+        Storage
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-24 bg-bg-card border border-border-base rounded-card" />
+        ))}
+      </div>
+    </div>
+  )
 
   return (
     <div>
