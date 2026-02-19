@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickVPS Monitor</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">Quick<span>VPS</span></div>
+      <div class="header-info">
+        <div class="item">
+          <div class="status-dot" id="status-dot"></div>
+          <span>Live</span>
+        </div>
+        <div class="item">🖥 <span id="header-hostname">—</span></div>
+        <div class="item">⚙ <span id="header-os">—</span></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Row 1: CPU + Memory + Swap gauges -->
+    <div class="grid-3">
+
+      <!-- CPU Gauge -->
+      <div class="card gauge-card">
+        <div class="card-title">CPU</div>
+        <div class="gauge-wrapper">
+          <canvas id="cpu-gauge"></canvas>
+          <div class="gauge-value">
+            <div class="pct"><span id="cpu-pct">0</span>%</div>
+          </div>
+        </div>
+        <div class="gauge-detail" id="cpu-model">—</div>
+        <div class="gauge-detail" id="cpu-freq">—</div>
+        <div class="cpu-cores" id="cpu-cores"></div>
+      </div>
+
+      <!-- Memory Gauge -->
+      <div class="card gauge-card">
+        <div class="card-title">Memory</div>
+        <div class="gauge-wrapper">
+          <canvas id="mem-gauge"></canvas>
+          <div class="gauge-value">
+            <div class="pct"><span id="mem-pct">0</span>%</div>
+          </div>
+        </div>
+        <div class="gauge-detail" id="mem-detail">—</div>
+        <div class="mem-bar-container">
+          <div class="mem-bar">
+            <div class="mem-bar-used" id="mem-bar-used" style="width:0%"></div>
+            <div class="mem-bar-cached" id="mem-bar-cached" style="width:0%"></div>
+            <div class="mem-bar-buffers" id="mem-bar-buffers" style="width:0%"></div>
+          </div>
+          <div class="mem-legend">
+            <div class="mem-legend-item">
+              <div class="legend-dot" style="background:var(--accent-blue)"></div>
+              Used: <span id="mem-used-label">—</span>
+            </div>
+            <div class="mem-legend-item">
+              <div class="legend-dot" style="background:var(--accent-purple)"></div>
+              Cache: <span id="mem-cached-label">—</span>
+            </div>
+            <div class="mem-legend-item">
+              <div class="legend-dot" style="background:var(--accent-cyan)"></div>
+              Buf: <span id="mem-buf-label">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Swap Gauge -->
+      <div class="card gauge-card">
+        <div class="card-title">Swap</div>
+        <div class="gauge-wrapper">
+          <canvas id="swap-gauge"></canvas>
+          <div class="gauge-value">
+            <div class="pct"><span id="swap-pct">0</span>%</div>
+          </div>
+        </div>
+        <div class="gauge-detail" id="swap-detail">—</div>
+      </div>
+
+    </div>
+
+    <!-- Row 2: Network chart + Disk I/O chart -->
+    <div class="grid-2">
+
+      <div class="card chart-card">
+        <div class="chart-header">
+          <span class="card-title" style="margin-bottom:0">Network</span>
+          <div class="chart-legend">
+            <div class="chart-legend-item">
+              <div class="legend-line" style="background:#3ddc84"></div> Recv
+            </div>
+            <div class="chart-legend-item">
+              <div class="legend-line" style="background:#f87171"></div> Sent
+            </div>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="net-chart"></canvas>
+        </div>
+      </div>
+
+      <div class="card chart-card">
+        <div class="chart-header">
+          <span class="card-title" style="margin-bottom:0">Disk I/O</span>
+          <div class="chart-legend">
+            <div class="chart-legend-item">
+              <div class="legend-line" style="background:#4c9ef5"></div> Read
+            </div>
+            <div class="chart-legend-item">
+              <div class="legend-line" style="background:#a78bfa"></div> Write
+            </div>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="diskio-chart"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Row 3: Network interfaces table -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">Network Interfaces</div>
+      <table class="net-table">
+        <thead>
+          <tr>
+            <th>Interface</th>
+            <th>↓ Recv/s</th>
+            <th>↑ Sent/s</th>
+            <th>Total Recv</th>
+            <th>Total Sent</th>
+          </tr>
+        </thead>
+        <tbody id="net-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Row 4: Disk cards -->
+    <div class="card-title">Storage</div>
+    <div class="grid-4" id="disks-container"></div>
+
+    <!-- Row 5: Storage Analyzer -->
+    <div class="card storage-section">
+      <div class="storage-header">
+        <div class="card-title" style="margin-bottom:0">Storage Analyzer (ncdu)</div>
+        <div class="storage-controls">
+          <div class="scan-status">
+            <div class="spinner" id="scan-spinner" style="display:none"></div>
+            <span id="scan-status-text"></span>
+          </div>
+          <input
+            type="text"
+            class="scan-path-input"
+            id="scan-path"
+            value="/"
+            placeholder="Path to scan"
+          />
+          <button class="btn btn-primary" id="scan-btn">Scan</button>
+          <button class="btn btn-danger" id="cancel-btn" style="display:none">Cancel</button>
+        </div>
+      </div>
+      <div id="ncdu-tree-container"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Connection banner -->
+<div class="connection-banner" id="connection-banner">
+  WebSocket disconnected — reconnecting…
+</div>
+
+<script src="/js/gauges.js"></script>
+<script src="/js/charts.js"></script>
+<script src="/js/ncdu.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

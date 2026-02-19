@@ -1,0 +1,15 @@
+[Unit]
+Description=QuickVPS System Monitor
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/quickvps -addr :8080 -user admin -password changeme
+User=root
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=quickvps
+
+[Install]
+WantedBy=multi-user.target

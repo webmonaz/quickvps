@@ -1,0 +1,29 @@
+# Compiled binaries
+quickvps
+quickvps-linux
+quickvps-linux-arm64
+
+# Go build cache and test artifacts
+*.test
+*.out
+coverage.out
+
+# Claude Code local settings
+.claude/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment / secrets
+.env
+.env.*
+
+# Screenshots added to docs (tracked separately if needed)
+docs/screenshot.png
