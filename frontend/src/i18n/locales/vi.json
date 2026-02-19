@@ -58,11 +58,49 @@
     "en": "EN",
     "vi": "VI"
   },
+  "mode": {
+    "public": "Chế độ công khai",
+    "authEnabled": "Chế độ đăng nhập"
+  },
   "nav": {
     "dashboard": "Bảng điều khiển",
     "storage": "Lưu trữ",
     "ports": "Cổng",
-    "settings": "Cài đặt"
+    "settings": "Cài đặt",
+    "admin": "Quản trị"
+  },
+  "auth": {
+    "signIn": "Đăng nhập",
+    "username": "Tên đăng nhập",
+    "password": "Mật khẩu",
+    "invalidCredentials": "Sai tên đăng nhập hoặc mật khẩu",
+    "loginFailed": "Đăng nhập thất bại",
+    "logout": "Đăng xuất"
+  },
+  "admin": {
+    "title": "Quản trị",
+    "userList": "Người dùng",
+    "auditTitle": "Nhật ký thao tác người dùng",
+    "createUser": "Tạo người dùng",
+    "createAction": "Tạo",
+    "saveAction": "Lưu",
+    "cancelAction": "Hủy",
+    "deleteAction": "Xóa",
+    "deleteTitle": "Xác nhận xóa",
+    "newPasswordOptional": "Mật khẩu mới (không bắt buộc)",
+    "currentUserHint": "Tài khoản phiên hiện tại (không thể tự xóa)",
+    "noChanges": "Không có thay đổi để lưu",
+    "noUsers": "Không có người dùng",
+    "forbidden": "Bạn cần quyền quản trị để truy cập trang này",
+    "loadError": "Không tải được danh sách người dùng",
+    "createSuccess": "Đã tạo người dùng",
+    "createError": "Không thể tạo người dùng",
+    "updateSuccess": "Đã cập nhật người dùng",
+    "updateError": "Không thể cập nhật người dùng",
+    "deleteSuccess": "Đã xóa người dùng",
+    "deleteError": "Không thể xóa người dùng",
+    "deleteConfirm": "Xóa người dùng {{username}}?",
+    "noAudit": "Chưa có bản ghi nhật ký"
   },
   "ports": {
     "title": "Quét cổng",
@@ -87,6 +125,7 @@
   "settings": {
     "title": "Cài đặt",
     "appearance": "Giao diện",
+    "accessMode": "Chế độ truy cập",
     "theme": "Chủ đề",
     "language": "Ngôn ngữ",
     "dataUpdates": "Cập nhật dữ liệu",

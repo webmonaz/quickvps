@@ -58,11 +58,49 @@
     "en": "EN",
     "vi": "VI"
   },
+  "mode": {
+    "public": "Public Mode",
+    "authEnabled": "Auth Mode"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "storage": "Storage",
     "ports": "Ports",
-    "settings": "Settings"
+    "settings": "Settings",
+    "admin": "Admin"
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "username": "Username",
+    "password": "Password",
+    "invalidCredentials": "Invalid username or password",
+    "loginFailed": "Login failed",
+    "logout": "Sign out"
+  },
+  "admin": {
+    "title": "Admin",
+    "userList": "Users",
+    "auditTitle": "User Audit Log",
+    "createUser": "Create User",
+    "createAction": "Create",
+    "saveAction": "Save",
+    "cancelAction": "Cancel",
+    "deleteAction": "Delete",
+    "deleteTitle": "Confirm Delete",
+    "newPasswordOptional": "New password (optional)",
+    "currentUserHint": "Current session user (cannot delete self)",
+    "noChanges": "No changes to save",
+    "noUsers": "No users found",
+    "forbidden": "Admin role is required to access this page",
+    "loadError": "Failed to load users",
+    "createSuccess": "User created",
+    "createError": "Failed to create user",
+    "updateSuccess": "User updated",
+    "updateError": "Failed to update user",
+    "deleteSuccess": "User deleted",
+    "deleteError": "Failed to delete user",
+    "deleteConfirm": "Delete user {{username}}?",
+    "noAudit": "No audit entries yet"
   },
   "ports": {
     "title": "Port Scanning",
@@ -87,6 +125,7 @@
   "settings": {
     "title": "Settings",
     "appearance": "Appearance",
+    "accessMode": "Access Mode",
     "theme": "Theme",
     "language": "Language",
     "dataUpdates": "Data Updates",

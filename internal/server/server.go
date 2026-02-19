@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"embed"
 	"io/fs"
 	"log"
@@ -8,36 +9,47 @@ import (
 	"strings"
 	"time"
 
+	"quickvps/internal/auth"
 	"quickvps/internal/metrics"
 	"quickvps/internal/ncdu"
 	"quickvps/internal/ws"
 )
 
+const sessionCookieName = "quickvps_session"
+
+type contextKey string
+
+const sessionContextKey contextKey = "quickvps.session"
+
 type Server struct {
-	mux       *http.ServeMux
-	collector *metrics.Collector
-	hub       *ws.Hub
-	runner    *ncdu.Runner
-	user      string
-	password  string
-	webFS     embed.FS
+	mux          *http.ServeMux
+	collector    *metrics.Collector
+	hub          *ws.Hub
+	runner       *ncdu.Runner
+	authDisabled bool
+	authStore    *auth.Store
+	sessions     *auth.SessionManager
+	webFS        embed.FS
 }
 
 func New(
 	collector *metrics.Collector,
 	hub *ws.Hub,
 	runner *ncdu.Runner,
-	user, password string,
+	authDisabled bool,
+	authStore *auth.Store,
+	sessions *auth.SessionManager,
 	webFS embed.FS,
 ) *Server {
 	s := &Server{
-		mux:       http.NewServeMux(),
-		collector: collector,
-		hub:       hub,
-		runner:    runner,
-		user:      user,
-		password:  password,
-		webFS:     webFS,
+		mux:          http.NewServeMux(),
+		collector:    collector,
+		hub:          hub,
+		runner:       runner,
+		authDisabled: authDisabled,
+		authStore:    authStore,
+		sessions:     sessions,
+		webFS:        webFS,
 	}
 	s.registerRoutes()
 	return s
@@ -53,6 +65,12 @@ func (s *Server) registerRoutes() {
 
 	s.mux.HandleFunc("/ws", s.handleWS)
 	s.mux.HandleFunc("/api/info", s.handleInfo)
+	s.mux.HandleFunc("/api/auth/login", s.handleAuthLogin)
+	s.mux.HandleFunc("/api/auth/logout", s.handleAuthLogout)
+	s.mux.HandleFunc("/api/auth/me", s.handleAuthMe)
+	s.mux.HandleFunc("/api/users", s.handleUsers)
+	s.mux.HandleFunc("/api/users/", s.handleUserByID)
+	s.mux.HandleFunc("/api/audit/users", s.handleUserAudit)
 	s.mux.HandleFunc("/api/interval", s.handleInterval)
 	s.mux.HandleFunc("/api/metrics", s.handleMetrics)
 	s.mux.HandleFunc("/api/ports", s.handlePorts)
@@ -66,15 +84,13 @@ func (s *Server) registerRoutes() {
 func (s *Server) Handler() http.Handler {
 	var handler http.Handler = s.mux
 	handler = loggingMiddleware(handler)
-	if s.password != "" {
-		handler = basicAuthMiddleware(s.user, s.password, handler)
+	if !s.authDisabled {
+		handler = sessionAuthMiddleware(s, handler)
 	}
 	return handler
 }
 
-// spaHandler serves static files and falls back to index.html for SPA routes.
 func spaHandler(webSub fs.FS, fileServer http.Handler) http.Handler {
-	// Pre-read index.html once for fast fallback responses.
 	indexHTML, err := fs.ReadFile(webSub, "index.html")
 	if err != nil {
 		log.Fatalf("spaHandler: failed to read index.html: %v", err)
@@ -89,23 +105,62 @@ func spaHandler(webSub fs.FS, fileServer http.Handler) http.Handler {
 			fileServer.ServeHTTP(w, r)
 			return
 		}
-		// File not found — serve index.html so React Router handles the route.
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(indexHTML)
 	})
 }
 
-func basicAuthMiddleware(user, pass string, next http.Handler) http.Handler {
+func sessionAuthMiddleware(s *Server, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		u, p, ok := r.BasicAuth()
-		if !ok || u != user || p != pass {
-			w.Header().Set("WWW-Authenticate", `Basic realm="quickvps"`)
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		if isPublicPath(r.URL.Path) {
+			next.ServeHTTP(w, r)
 			return
 		}
-		next.ServeHTTP(w, r)
+
+		tokenCookie, err := r.Cookie(sessionCookieName)
+		if err != nil {
+			writeUnauthorized(w)
+			return
+		}
+
+		session, ok := s.sessions.Get(tokenCookie.Value)
+		if !ok {
+			writeUnauthorized(w)
+			return
+		}
+
+		ctx := withSession(r.Context(), session)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func isPublicPath(path string) bool {
+	if path == "/api/auth/login" {
+		return true
+	}
+	if !strings.HasPrefix(path, "/api/") && path != "/ws" {
+		return true
+	}
+	return false
+}
+
+func writeUnauthorized(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusUnauthorized)
+	_, _ = w.Write([]byte(`{"error":"unauthorized"}`))
+}
+
+func withSession(ctx context.Context, session auth.Session) context.Context {
+	return context.WithValue(ctx, sessionContextKey, session)
+}
+
+func sessionFromContext(ctx context.Context) (auth.Session, bool) {
+	session, ok := ctx.Value(sessionContextKey).(auth.Session)
+	if !ok {
+		return auth.Session{}, false
+	}
+	return session, true
 }
 
 func loggingMiddleware(next http.Handler) http.Handler {

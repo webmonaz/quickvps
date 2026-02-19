@@ -11,15 +11,351 @@ import (
 	"strings"
 	"time"
 
+	"quickvps/internal/auth"
 	"quickvps/internal/ncdu"
 	"quickvps/internal/ports"
 	"quickvps/internal/ws"
 )
 
+func mustJSON(v any) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return "{}"
+	}
+	return string(b)
+}
+
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+func (s *Server) authRequired() bool {
+	return !s.authDisabled
+}
+
+func (s *Server) currentSession(r *http.Request) (auth.Session, bool) {
+	if !s.authRequired() {
+		return auth.Session{}, false
+	}
+	return sessionFromContext(r.Context())
+}
+
+func (s *Server) currentUser(r *http.Request) (auth.User, bool) {
+	session, ok := s.currentSession(r)
+	if !ok {
+		return auth.User{}, false
+	}
+	return auth.User{ID: session.UserID, Username: session.Username, Role: session.Role}, true
+}
+
+func (s *Server) requireAdmin(w http.ResponseWriter, r *http.Request) (auth.User, bool) {
+	user, ok := s.currentUser(r)
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return auth.User{}, false
+	}
+	if user.Role != auth.RoleAdmin {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return auth.User{}, false
+	}
+	return user, true
+}
+
+func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if s.authDisabled {
+		writeJSON(w, http.StatusOK, map[string]any{"auth_disabled": true})
+		return
+	}
+
+	var body struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
+		return
+	}
+
+	user, err := s.authStore.Authenticate(body.Username, body.Password)
+	if err != nil {
+		if errors.Is(err, auth.ErrInvalidCredentials) {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid credentials"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	session, err := s.sessions.Create(user)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create session"})
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    session.Token,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Expires:  session.ExpiresAt,
+		Secure:   r.TLS != nil,
+	})
+
+	writeJSON(w, http.StatusOK, map[string]any{"user": user})
+}
+
+func (s *Server) handleAuthLogout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if s.authDisabled {
+		writeJSON(w, http.StatusOK, map[string]any{"auth_disabled": true})
+		return
+	}
+
+	if tokenCookie, err := r.Cookie(sessionCookieName); err == nil {
+		s.sessions.Delete(tokenCookie.Value)
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Expires:  time.Unix(0, 0),
+		MaxAge:   -1,
+		Secure:   r.TLS != nil,
+	})
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "logged_out"})
+}
+
+func (s *Server) handleAuthMe(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if s.authDisabled {
+		writeJSON(w, http.StatusOK, map[string]any{"auth_disabled": true})
+		return
+	}
+
+	user, ok := s.currentUser(r)
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"user": user})
+}
+
+func (s *Server) handleUsers(w http.ResponseWriter, r *http.Request) {
+	admin, ok := s.requireAdmin(w, r)
+	if !ok {
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		users, err := s.authStore.ListUsers()
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"users": users})
+
+	case http.MethodPost:
+		var body struct {
+			Username string    `json:"username"`
+			Password string    `json:"password"`
+			Role     auth.Role `json:"role"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
+			return
+		}
+
+		if body.Role == "" {
+			body.Role = auth.RoleViewer
+		}
+
+		created, err := s.authStore.CreateUser(body.Username, body.Password, body.Role)
+		if err != nil {
+			switch {
+			case errors.Is(err, auth.ErrUserExists),
+				errors.Is(err, auth.ErrInvalidRole),
+				errors.Is(err, auth.ErrInvalidUsername),
+				errors.Is(err, auth.ErrInvalidPassword):
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			default:
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			}
+			return
+		}
+
+		_ = s.authStore.LogUserAudit(
+			admin.ID,
+			admin.Username,
+			"create_user",
+			created.ID,
+			created.Username,
+			mustJSON(map[string]any{"role": created.Role}),
+		)
+
+		writeJSON(w, http.StatusCreated, map[string]any{"user": created})
+
+	default:
+		_ = admin
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (s *Server) handleUserByID(w http.ResponseWriter, r *http.Request) {
+	admin, ok := s.requireAdmin(w, r)
+	if !ok {
+		return
+	}
+
+	idPart := strings.TrimPrefix(r.URL.Path, "/api/users/")
+	if idPart == "" || strings.Contains(idPart, "/") {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid user id"})
+		return
+	}
+
+	userID, err := strconv.ParseInt(idPart, 10, 64)
+	if err != nil || userID <= 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid user id"})
+		return
+	}
+
+	switch r.Method {
+	case http.MethodPut:
+		var body struct {
+			Role     *auth.Role `json:"role"`
+			Password *string    `json:"password"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
+			return
+		}
+
+		updated, err := s.authStore.UpdateUser(userID, body.Role, body.Password)
+		if err != nil {
+			switch {
+			case errors.Is(err, auth.ErrNotFound):
+				writeJSON(w, http.StatusNotFound, map[string]string{"error": "user not found"})
+			case errors.Is(err, auth.ErrInvalidRole),
+				errors.Is(err, auth.ErrInvalidPassword),
+				errors.Is(err, auth.ErrLastAdmin):
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			default:
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			}
+			return
+		}
+
+		if body.Role != nil || body.Password != nil {
+			s.sessions.DeleteByUserID(userID)
+		}
+
+		_ = s.authStore.LogUserAudit(
+			admin.ID,
+			admin.Username,
+			"update_user",
+			updated.ID,
+			updated.Username,
+			mustJSON(map[string]any{
+				"role_changed":     body.Role != nil,
+				"password_changed": body.Password != nil,
+				"new_role":         updated.Role,
+			}),
+		)
+
+		writeJSON(w, http.StatusOK, map[string]any{"user": updated})
+
+	case http.MethodDelete:
+		if admin.ID == userID {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "cannot delete current user"})
+			return
+		}
+
+		target, err := s.authStore.GetUserByID(userID)
+		if err != nil {
+			if errors.Is(err, auth.ErrNotFound) {
+				writeJSON(w, http.StatusNotFound, map[string]string{"error": "user not found"})
+				return
+			}
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+
+		if err := s.authStore.DeleteUser(userID); err != nil {
+			if errors.Is(err, auth.ErrNotFound) {
+				writeJSON(w, http.StatusNotFound, map[string]string{"error": "user not found"})
+				return
+			}
+			if errors.Is(err, auth.ErrLastAdmin) {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+				return
+			}
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+
+		s.sessions.DeleteByUserID(userID)
+
+		_ = s.authStore.LogUserAudit(
+			admin.ID,
+			admin.Username,
+			"delete_user",
+			target.ID,
+			target.Username,
+			mustJSON(map[string]any{"target_role": target.Role}),
+		)
+
+		writeJSON(w, http.StatusOK, map[string]any{"status": "deleted", "id": userID})
+
+	default:
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (s *Server) handleUserAudit(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireAdmin(w, r); !ok {
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	limit := 100
+	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed <= 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid limit"})
+			return
+		}
+		limit = parsed
+	}
+
+	entries, err := s.authStore.ListUserAudits(limit)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"entries": entries})
 }
 
 func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
@@ -30,6 +366,7 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 		"os":                 runtime.GOOS,
 		"arch":               runtime.GOARCH,
 		"uptime":             getUptime(),
+		"auth_enabled":       !s.authDisabled,
 		"interval_ms":        s.collector.Interval().Milliseconds(),
 		"ncdu_cache_ttl_sec": int64(s.runner.CacheTTL().Seconds()),
 	}

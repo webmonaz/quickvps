@@ -9,9 +9,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
+	"quickvps/internal/auth"
 	"quickvps/internal/metrics"
 	"quickvps/internal/ncdu"
 	"quickvps/internal/server"
@@ -22,11 +25,19 @@ import (
 var webFS embed.FS
 
 func main() {
-	addr     := flag.String("addr", ":8080", "Listen address")
-	user     := flag.String("user", "admin", "Basic auth username")
-	password := flag.String("password", "", "Basic auth password (empty = disabled)")
+	addr := flag.String("addr", ":8080", "Listen address")
+	authEnabled := flag.Bool("auth", false, "Enable user management and login")
+	user := flag.String("user", "admin", "Initial admin username when auth is enabled")
+	password := flag.String("password", "", "Initial admin password when auth is enabled")
+	dbPath := flag.String("db", "quickvps.db", "SQLite database path")
 	interval := flag.Duration("interval", 2*time.Second, "Metrics push interval")
 	flag.Parse()
+
+	if v := strings.TrimSpace(os.Getenv("QUICKVPS_AUTH")); v != "" {
+		if parsed, err := strconv.ParseBool(v); err == nil {
+			*authEnabled = parsed
+		}
+	}
 
 	// Fall back to environment variables
 	if *user == "admin" {
@@ -40,9 +51,7 @@ func main() {
 		}
 	}
 
-	if *password == "" {
-		log.Println("WARNING: No password set — authentication is DISABLED")
-	}
+	bootstrapPassword := strings.TrimSpace(*password)
 
 	log.Printf("Starting QuickVPS on %s (interval=%s)", *addr, *interval)
 
@@ -50,8 +59,34 @@ func main() {
 	defer stop()
 
 	collector := metrics.NewCollector(*interval)
-	hub       := ws.NewHub()
-	runner    := ncdu.NewRunner()
+	hub := ws.NewHub()
+	runner := ncdu.NewRunner()
+
+	var (
+		authStore    *auth.Store
+		sessionStore *auth.SessionManager
+	)
+
+	if *authEnabled {
+		if bootstrapPassword == "" {
+			bootstrapPassword = "admin123"
+			log.Printf("WARNING: No bootstrap password provided; using first-run default credentials %q/%q", *user, bootstrapPassword)
+		}
+
+		store, err := auth.NewStore(*dbPath)
+		if err != nil {
+			log.Fatalf("failed to initialize auth store: %v", err)
+		}
+		authStore = store
+		sessionStore = auth.NewSessionManager(24*time.Hour, authStore)
+
+		if err := authStore.SeedAdmin(*user, bootstrapPassword); err != nil {
+			log.Fatalf("failed to seed admin user: %v", err)
+		}
+		defer authStore.Close() //nolint:errcheck
+	} else {
+		log.Println("Auth mode is DISABLED (public access). Start with --auth=true to enable user management and login.")
+	}
 
 	// Start background goroutines
 	go collector.Run(ctx)
@@ -74,7 +109,7 @@ func main() {
 		}
 	}()
 
-	srv := server.New(collector, hub, runner, *user, *password, webFS)
+	srv := server.New(collector, hub, runner, !*authEnabled, authStore, sessionStore, webFS)
 
 	httpServer := &http.Server{
 		Addr:         *addr,

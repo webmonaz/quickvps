@@ -28,6 +28,7 @@ export default function SettingsPage() {
   const setLanguage     = useStore((s) => s.setLanguage)
   const setDefaultScanPath = useStore((s) => s.setDefaultScanPath)
   const setFontSize     = useStore((s) => s.setFontSize)
+  const serverInfo      = useStore((s) => s.serverInfo)
   const isFrozen        = useStore((s) => s.isFrozen)
   const updateIntervalMs = useStore((s) => s.updateIntervalMs)
   const ncduCacheTtlSec = useStore((s) => s.ncduCacheTtlSec)
@@ -126,6 +127,16 @@ export default function SettingsPage() {
       {/* Appearance */}
       <Card>
         <CardTitle>{t('settings.appearance')}</CardTitle>
+
+        {/* Theme */}
+        <div className="flex items-center justify-between py-3 border-b border-border-base">
+          <div>
+            <p className="text-sm font-medium text-text-primary">{t('settings.accessMode')}</p>
+          </div>
+          <span className={`px-2 py-1 rounded text-[10px] font-semibold font-mono ${serverInfo?.auth_enabled ? 'bg-accent-blue text-bg-primary' : 'bg-accent-yellow text-bg-primary'}`}>
+            {serverInfo?.auth_enabled ? t('mode.authEnabled') : t('mode.public')}
+          </span>
+        </div>
 
         {/* Theme */}
         <div className="flex items-center justify-between py-3 border-b border-border-base">

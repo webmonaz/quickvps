@@ -13,7 +13,7 @@ A single-binary Go web application that runs on any Linux VPS to monitor system 
 - **Freeze + custom update interval** — pause live updates and adjust refresh interval from Settings
 - **Storage Analyzer** — runs `ncdu` in the background, renders a collapsible directory tree in the browser. Reuses recent same-path scan results (TTL configurable in Settings in seconds, default 600 seconds) to reduce server load. Auto-installs `ncdu` if absent (supports apt, yum, pacman)
 - **Port Scanning + kill by port** — inspect listening TCP/UDP ports and terminate processes bound to a selected port
-- **Basic Auth** — one flag sets a password; no config files needed
+- **Session Auth + SQLite users** — bootstrap admin from flags, then sign in via UI session cookie
 - **Dark theme** — single dark UI with CSS variables, responsive down to mobile
 - **Single binary** — all web assets are embedded via `//go:embed`; just `scp` and run
 
@@ -28,7 +28,7 @@ chmod +x quickvps
 ./quickvps --password=secret
 ```
 
-Open `http://your-server:8080` and log in with `admin` / `secret`.
+Open `http://your-server:8080` and sign in with `admin` / `secret`.
 
 ### Build from source
 
@@ -69,18 +69,23 @@ make frontend
 Usage of ./quickvps:
   -addr string
         Listen address (default ":8080")
+  -auth
+        Enable user management and login (default false)
+  -db string
+        SQLite database path (default "quickvps.db")
   -interval duration
         Metrics push interval (default 2s)
   -password string
-        Basic auth password (empty = auth disabled)
+        Initial admin password when auth is enabled (default: admin123 when omitted)
   -user string
-        Basic auth username (default "admin")
+        Initial admin username when auth is enabled (default "admin")
 ```
 
 Environment variables as fallback (flags take precedence):
 
 | Variable            | Flag         |
 |---------------------|--------------|
+| `QUICKVPS_AUTH`     | `--auth`     |
 | `QUICKVPS_USER`     | `--user`     |
 | `QUICKVPS_PASSWORD` | `--password` |
 
@@ -111,12 +116,19 @@ bash scripts/install.sh quickvps-linux
 
 ## API Reference
 
-All endpoints require Basic Auth when `--password` is set.
+All API and WebSocket endpoints require a valid session cookie when `--password` is set.
 
 | Method   | Path               | Description                              |
 |----------|--------------------|------------------------------------------|
 | `GET`    | `/`                | Dashboard HTML (embedded)                |
 | `GET`    | `/api/info`        | Hostname, OS, arch, uptime               |
+| `POST`   | `/api/auth/login`  | Login `{"username":"admin","password":"..."}` |
+| `POST`   | `/api/auth/logout` | Logout current session                    |
+| `GET`    | `/api/auth/me`     | Current authenticated user                |
+| `GET`    | `/api/users`       | List users (admin)                        |
+| `POST`   | `/api/users`       | Create user (admin)                       |
+| `PUT`    | `/api/users/:id`   | Update role/password (admin)              |
+| `DELETE` | `/api/users/:id`   | Delete user (admin)                       |
 | `GET`    | `/api/interval`    | Current metrics interval                 |
 | `PUT`    | `/api/interval`    | Update interval `{"interval_ms":2000}` |
 | `GET`    | `/api/metrics`     | Current snapshot (one-shot JSON)         |
@@ -164,6 +176,10 @@ quickvps/
 │   ├── ws/                    # WebSocket hub
 │   │   ├── hub.go             # Register / unregister / broadcast
 │   │   └── client.go          # Read/write pumps, ping-pong keepalive
+│   ├── auth/                  # SQLite-backed users + session primitives
+│   │   ├── store.go           # User migrations + CRUD + password verify
+│   │   ├── session.go         # In-memory session manager
+│   │   └── types.go           # User/Role types
 │   └── server/                # HTTP layer
 │       ├── server.go          # Mux, auth middleware, logging middleware
 │       └── handlers.go        # REST + WebSocket handlers
@@ -194,6 +210,7 @@ quickvps/
 |---------|---------|
 | [`github.com/gorilla/websocket`](https://github.com/gorilla/websocket) | WebSocket server |
 | [`github.com/shirou/gopsutil/v3`](https://github.com/shirou/gopsutil) | Cross-platform system metrics |
+| [`modernc.org/sqlite`](https://pkg.go.dev/modernc.org/sqlite) | Pure-Go SQLite driver |
 
 The web UI uses [Chart.js](https://www.chartjs.org/) bundled via Vite with `react-chartjs-2`.
 

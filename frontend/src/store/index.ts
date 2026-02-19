@@ -3,7 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import type { Snapshot } from '@/types/metrics'
 import type { ScanResult } from '@/types/ncdu'
-import type { ServerInfo } from '@/types/api'
+import type { AuthUser, ServerInfo } from '@/types/api'
 
 export type Theme = 'dark' | 'light'
 export type Language = 'en' | 'vi'
@@ -26,6 +26,11 @@ interface ConnectionState {
 
 interface ServerInfoState {
   serverInfo: ServerInfo | null
+}
+
+interface AuthState {
+  authUser: AuthUser | null
+  authLoading: boolean
 }
 
 export type ToastVariant = 'info' | 'success' | 'error'
@@ -51,7 +56,7 @@ interface PreferencesState {
   ncduCacheTtlSec: number
 }
 
-export interface AppState extends MetricsState, NcduState, ConnectionState, ServerInfoState, PreferencesState, ToastState {
+export interface AppState extends MetricsState, NcduState, ConnectionState, ServerInfoState, PreferencesState, ToastState, AuthState {
   // Metrics actions
   setSnapshot: (snapshot: Snapshot) => void
 
@@ -65,6 +70,10 @@ export interface AppState extends MetricsState, NcduState, ConnectionState, Serv
 
   // Server info actions
   setServerInfo: (info: ServerInfo) => void
+
+  // Auth actions
+  setAuthUser: (user: AuthUser | null) => void
+  setAuthLoading: (loading: boolean) => void
 
   // Preferences actions
   setTheme: (theme: Theme) => void
@@ -100,6 +109,8 @@ export const useStore = create<AppState>()(
       isScanning: false,
       isConnected: false,
       serverInfo: null,
+      authUser: null,
+      authLoading: true,
       toasts: [],
       theme: (localStorage.getItem('theme') as Theme) ?? 'dark',
       language: (localStorage.getItem('language') as Language) ?? 'en',
@@ -148,6 +159,8 @@ export const useStore = create<AppState>()(
       setIsScanning: (v)      => set((s) => { s.isScanning = v }),
       setConnected:  (v)      => set((s) => { s.isConnected = v }),
       setServerInfo: (info)   => set((s) => { s.serverInfo = info }),
+      setAuthUser: (user)     => set((s) => { s.authUser = user }),
+      setAuthLoading: (loading) => set((s) => { s.authLoading = loading }),
 
       setTheme: (theme) => set((s) => {
         s.theme = theme

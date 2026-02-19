@@ -1,8 +1,9 @@
 import { memo } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/store'
 import { StatusDot } from '@/components/ui/StatusDot'
+import { Button } from '@/components/ui/Button'
 import type { Language } from '@/store'
 
 function IconDashboard() {
@@ -47,6 +48,14 @@ function IconPorts() {
   )
 }
 
+function IconAdmin() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2l3 6 6 .9-4.5 4.4L17.5 20 12 17l-5.5 3 1-6.7L3 8.9 9 8z"/>
+    </svg>
+  )
+}
+
 const NAV_ITEMS = [
   { to: '/',         labelKey: 'nav.dashboard', Icon: IconDashboard, end: true  },
   { to: '/storage',  labelKey: 'nav.storage',   Icon: IconStorage,   end: false },
@@ -55,6 +64,7 @@ const NAV_ITEMS = [
 ] as const
 
 export const Sidebar = memo(function Sidebar() {
+  const navigate = useNavigate()
   const isConnected = useStore((s) => s.isConnected)
   const isFrozen    = useStore((s) => s.isFrozen)
   const serverInfo  = useStore((s) => s.serverInfo)
@@ -62,7 +72,20 @@ export const Sidebar = memo(function Sidebar() {
   const language    = useStore((s) => s.language)
   const setTheme    = useStore((s) => s.setTheme)
   const setLanguage = useStore((s) => s.setLanguage)
+  const authUser = useStore((s) => s.authUser)
+  const setAuthUser = useStore((s) => s.setAuthUser)
   const { t }       = useTranslation()
+  const publicMode = authUser?.id === 0
+
+  async function handleLogout() {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+    } catch {
+      // no-op
+    }
+    setAuthUser(null)
+    navigate('/login', { replace: true })
+  }
 
   return (
     <aside className="w-52 shrink-0 flex flex-col h-screen sticky top-0 bg-bg-card border-r border-border-base z-30">
@@ -92,6 +115,22 @@ export const Sidebar = memo(function Sidebar() {
             {t(labelKey)}
           </NavLink>
         ))}
+
+        {authUser?.role === 'admin' && (
+          <NavLink
+            to="/admin"
+            className={({ isActive }) =>
+              `flex items-center gap-2.5 px-3 py-2 rounded-base text-xs font-mono transition-colors ${
+                isActive
+                  ? 'bg-accent-blue text-bg-primary font-semibold'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-card-hover'
+              }`
+            }
+          >
+            <IconAdmin />
+            {t('nav.admin')}
+          </NavLink>
+        )}
       </nav>
 
       {/* Server status */}
@@ -104,6 +143,11 @@ export const Sidebar = memo(function Sidebar() {
               {t('header.frozen')}
             </span>
           )}
+        </div>
+        <div>
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${serverInfo?.auth_enabled ? 'bg-accent-blue text-bg-primary' : 'bg-accent-yellow text-bg-primary'}`}>
+            {serverInfo?.auth_enabled ? t('mode.authEnabled') : t('mode.public')}
+          </span>
         </div>
         {serverInfo?.hostname && (
           <div className="flex items-center gap-1.5 truncate">
@@ -161,6 +205,14 @@ export const Sidebar = memo(function Sidebar() {
           )}
         </button>
       </div>
+
+      {!publicMode && (
+        <div className="px-4 pb-4">
+          <Button variant="ghost" className="w-full justify-center" onClick={handleLogout}>
+            {t('auth.logout')}
+          </Button>
+        </div>
+      )}
     </aside>
   )
 })
