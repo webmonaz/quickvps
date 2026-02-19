@@ -165,6 +165,13 @@ const snapshot = useStore(s => s.snapshot)
 
 ## Testing
 
+### Mandatory rule (do not skip)
+
+- Every new feature or behavior change **must** include tests in the same change set.
+- At minimum, add/extend one backend test (`go test`) and/or one frontend test (`npm test`) that proves the new behavior.
+- Bug fixes must include a regression test that fails before the fix and passes after.
+- Do not merge feature work with zero test delta unless the change is strictly non-functional (docs/comment-only).
+
 ```bash
 go test ./...               # unit tests
 go test -race ./...         # with race detector (required before PR)
@@ -174,6 +181,7 @@ make linux                  # cross-compile check
 cd frontend
 npm run build               # TypeScript check + Vite build (zero TS errors required)
 npm run lint                # ESLint (zero errors required)
+npm test                    # Vitest unit tests
 ```
 
 See `docs/TESTING.md` for the full testing guide including frontend manual checklist.
@@ -188,7 +196,7 @@ Frontend (see `frontend/package.json`):
 - `react` + `react-dom` v18, `react-router-dom` v6
 - `zustand` v4 + `immer` v10
 - `chart.js` v4 + `react-chartjs-2` v5
-- `tailwindcss` v3, `vite` v5
+- `tailwindcss` v3, `vite` v5, `vitest` v3
 
 Do not add new Go dependencies without strong justification. Binary size should stay under ~15 MB.
 Do not add new npm dependencies without updating `README.md` and this file.

@@ -59,6 +59,7 @@ npm run dev          # → http://localhost:5173
 
 # Build for production (outputs to web/ for Go embed)
 npm run build
+npm test              # run Vitest unit tests
 # or from project root:
 make frontend
 ```
@@ -214,7 +215,7 @@ quickvps/
 
 The web UI uses [Chart.js](https://www.chartjs.org/) bundled via Vite with `react-chartjs-2`.
 
-**Frontend dependencies** (see `frontend/package.json`): React 18, react-router-dom, Zustand, Immer, chart.js, react-chartjs-2, TailwindCSS, Vite.
+**Frontend dependencies** (see `frontend/package.json`): React 18, react-router-dom, Zustand, Immer, chart.js, react-chartjs-2, TailwindCSS, Vite, Vitest.
 
 ## License
 
