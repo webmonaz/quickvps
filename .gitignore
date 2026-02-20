@@ -17,6 +17,9 @@ coverage.out
 # Codex local settings
 .codex/
 
+# AGENTS local settings
+.agents/
+
 # macOS
 .DS_Store
 **/.DS_Store
