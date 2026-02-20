@@ -14,7 +14,7 @@ go build -o quickvps .          # build for current OS (uses current web/ build 
 make linux                       # cross-compile → quickvps-linux (amd64)
 make linux-arm64                 # cross-compile → quickvps-linux-arm64
 make frontend                    # build React frontend → web/
-make build-full                  # make frontend + make linux
+make build-full                  # make frontend + make build + make linux + make linux-arm64
 ./quickvps --auth=true --password=dev        # run locally
 ```
 
@@ -27,6 +27,44 @@ For UI development, use the Vite dev server (no recompile needed):
 # Terminal 2
 cd frontend && npm run dev       # → http://localhost:5173 with HMR
 ```
+
+## OrbStack real-machine testing (required flow for final verification)
+
+Reference: OrbStack SSH and machine networking docs:
+- https://docs.orbstack.dev/machines/ssh
+- https://docs.orbstack.dev/machines/network
+
+Use OrbStack Linux machine SSH access (example machine/user in this project):
+```bash
+ssh ubuntu@orb
+```
+
+For real host testing:
+1. Build binaries locally:
+   ```bash
+   make build-full
+   ```
+2. Copy ARM64 binary to OrbStack machine (if not already present):
+   ```bash
+   scp quickvps-linux-arm64 ubuntu@orb:~/quickvps
+   ```
+3. Run on the machine:
+   ```bash
+   ssh ubuntu@orb
+   chmod +x ~/quickvps
+   ~/quickvps --auth=true --password=dev --addr=:8080
+   ```
+4. Access from macOS browser:
+   - `http://ubuntu.orb.local:8080/`
+
+## Skills source of truth
+
+- Canonical skill location: `.agents/skills/`
+- Mirror paths must be symbolic links to the canonical location:
+  - `skills -> .agents/skills`
+  - `.claude/skills -> ../.agents/skills`
+  - `.codex/skills -> ../.agents/skills`
+- When creating/updating skills, edit files in `.agents/skills` only.
 
 ## Project layout (critical files)
 
@@ -116,11 +154,23 @@ POST /api/ncdu/scan → runner.Start(path)
 | DELETE   | `/api/ncdu/scan`   | handleNcduScan       |
 | GET/PUT  | `/api/ncdu/cache`  | handleNcduCache      |
 | GET      | `/api/ncdu/status` | handleNcduStatus     |
+| GET/PUT  | `/api/alerts/config` | handleAlertsConfig |
+| GET      | `/api/alerts/status` | handleAlertsStatus |
+| GET      | `/api/alerts/history` | handleAlertsHistory |
+| POST     | `/api/alerts/test` | handleAlertsTest |
+| POST/DELETE | `/api/alerts/silence` | handleAlertsSilence |
+| GET      | `/api/firewall/status` | handleFirewallStatus |
+| GET      | `/api/firewall/rules` | handleFirewallRules |
+| GET      | `/api/firewall/exposures` | handleFirewallExposures |
+| GET      | `/api/packages/inventory` | handlePackagesInventory |
+| GET      | `/api/packages/updates` | handlePackagesUpdates |
 | GET      | `/ws`              | handleWS             |
 
 `GET /api/info` includes:
 - `hostname`, `os`, `arch`, `uptime`
 - `auth_enabled`, `interval_ms`, `ncdu_cache_ttl_sec`
+- `required_packages`, `missing_required_packages`, `required_packages_install_cmd`
+- `alerts_enabled`, `alerts_read_only`, `alerts_history_retention_days`
 - `local_ip`, `public_ip`, `dns_servers`, `version`
 
 ## Key invariants — do not break these

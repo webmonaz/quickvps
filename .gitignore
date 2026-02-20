@@ -9,16 +9,22 @@ quickvps-linux-arm64
 coverage.out
 
 # Claude Code local settings
-.claude/
+.claude/*
+!.claude/skills
+!.claude/skills/**
 
 # VS Code settings
 .vscode/
 
 # Codex local settings
-.codex/
+.codex/*
+!.codex/skills
+!.codex/skills/**
 
 # AGENTS local settings
-.agents/
+.agents/*
+!.agents/skills
+!.agents/skills/**
 
 # macOS
 .DS_Store

@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/Card'
 import { CardTitle } from '@/components/ui/CardTitle'
 import { Button } from '@/components/ui/Button'
 import { useToast } from '@/hooks/useToast'
+import { errorMessage, readAPIError } from '@/lib/httpError'
 import type { PortListener } from '@/types/api'
 
 interface PortsResponse {
@@ -22,7 +23,7 @@ export default function PortsPage() {
     try {
       const res = await fetch('/api/ports')
       if (!res.ok) {
-        throw new Error('failed to fetch ports')
+        throw new Error(await readAPIError(res, 'failed to fetch ports'))
       }
       const payload = await res.json() as PortsResponse
       setListeners(payload.listeners ?? [])
@@ -30,7 +31,7 @@ export default function PortsPage() {
     } catch (err) {
       console.error('Failed to fetch ports:', err)
       if (!loadErrorNotifiedRef.current) {
-        showError(t('ports.loadError'))
+        showError(errorMessage(err, t('ports.loadError')))
         loadErrorNotifiedRef.current = true
       }
     } finally {
@@ -71,14 +72,13 @@ export default function PortsPage() {
     try {
       const res = await fetch(`/api/ports/${port}`, { method: 'DELETE' })
       if (!res.ok) {
-        const body = await res.json().catch(() => null) as { error?: string } | null
-        throw new Error(body?.error || 'failed to kill process')
+        throw new Error(await readAPIError(res, 'failed to kill process'))
       }
       showSuccess(t('ports.killSuccess', { port }))
       await fetchPorts()
     } catch (err) {
       console.error('Failed to kill port:', err)
-      showError(t('ports.killError'))
+      showError(errorMessage(err, t('ports.killError')))
     } finally {
       setKillingPort(null)
     }

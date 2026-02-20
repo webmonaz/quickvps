@@ -6,8 +6,10 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -284,6 +286,16 @@ func TestHandleIntervalGetPut(t *testing.T) {
 func TestHandleInfoIncludesExtendedFields(t *testing.T) {
 	s, collector, runner := newServerForSystemTests()
 	s.authDisabled = false
+	originalLookPath := commandLookPath
+	commandLookPath = func(file string) (string, error) {
+		if file == "lsof" {
+			return "", exec.ErrNotFound
+		}
+		return "/usr/bin/" + file, nil
+	}
+	t.Cleanup(func() {
+		commandLookPath = originalLookPath
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/info", nil)
 	rec := httptest.NewRecorder()
@@ -361,6 +373,66 @@ func TestHandleInfoIncludesExtendedFields(t *testing.T) {
 	version, ok := body["version"].(string)
 	if !ok || version == "" {
 		t.Fatalf("version missing or empty: %v", body)
+	}
+
+	requiredPackagesRaw, ok := body["required_packages"].([]any)
+	if !ok {
+		t.Fatalf("required_packages missing or invalid type: %v", body)
+	}
+	if len(requiredPackagesRaw) != 2 {
+		t.Fatalf("required_packages len = %d, want 2", len(requiredPackagesRaw))
+	}
+
+	seenByName := map[string]map[string]any{}
+	for _, item := range requiredPackagesRaw {
+		entry, ok := item.(map[string]any)
+		if !ok {
+			t.Fatalf("required_packages entry invalid: %#v", item)
+		}
+		name, ok := entry["name"].(string)
+		if !ok || name == "" {
+			t.Fatalf("required_packages entry missing name: %#v", entry)
+		}
+		if _, ok := entry["installed"].(bool); !ok {
+			t.Fatalf("required_packages[%s].installed missing or invalid: %#v", name, entry)
+		}
+		requiredFor, ok := entry["required_for"].(string)
+		if !ok || requiredFor == "" {
+			t.Fatalf("required_packages[%s].required_for missing or invalid: %#v", name, entry)
+		}
+		seenByName[name] = entry
+	}
+
+	if _, ok := seenByName["lsof"]; !ok {
+		t.Fatalf("required_packages missing lsof entry: %#v", requiredPackagesRaw)
+	}
+	if _, ok := seenByName["ncdu"]; !ok {
+		t.Fatalf("required_packages missing ncdu entry: %#v", requiredPackagesRaw)
+	}
+	if installed, _ := seenByName["lsof"]["installed"].(bool); installed {
+		t.Fatalf("required_packages lsof installed = true, want false")
+	}
+	if installed, _ := seenByName["ncdu"]["installed"].(bool); !installed {
+		t.Fatalf("required_packages ncdu installed = false, want true")
+	}
+
+	missingRaw, ok := body["missing_required_packages"].([]any)
+	if !ok {
+		t.Fatalf("missing_required_packages missing or invalid type: %v", body)
+	}
+	if len(missingRaw) != 1 {
+		t.Fatalf("missing_required_packages len = %d, want 1", len(missingRaw))
+	}
+	if missingName, ok := missingRaw[0].(string); !ok || missingName != "lsof" {
+		t.Fatalf("missing_required_packages[0] = %#v, want %q", missingRaw[0], "lsof")
+	}
+
+	installCmd, ok := body["required_packages_install_cmd"].(string)
+	if !ok {
+		t.Fatalf("required_packages_install_cmd missing or invalid type: %v", body)
+	}
+	if !strings.Contains(installCmd, "lsof") {
+		t.Fatalf("required_packages_install_cmd = %q, want to contain lsof", installCmd)
 	}
 
 	if _, ok := body["alerts_enabled"].(bool); !ok {

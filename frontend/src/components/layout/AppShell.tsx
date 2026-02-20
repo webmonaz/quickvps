@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { Sidebar } from './Sidebar'
 import { ConnectionBanner } from './ConnectionBanner'
 import { FloatingFreezeButton } from './FloatingFreezeButton'
+import { RequiredPackagesBanner } from './RequiredPackagesBanner'
 import { ToastHost } from '@/components/ui/Toast'
 
 interface AppShellProps {
@@ -13,6 +14,7 @@ export const AppShell = memo(function AppShell({ children }: AppShellProps) {
     <div className="flex bg-bg-primary text-text-primary">
       <Sidebar />
       <div className="flex flex-col flex-1 min-w-0 min-h-screen">
+        <RequiredPackagesBanner />
         <main className="flex-1 p-4">
           {children}
         </main>

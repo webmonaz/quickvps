@@ -64,6 +64,16 @@
     "scanStartError": "Failed to start scan",
     "scanCancelError": "Failed to cancel scan"
   },
+  "requiredPackages": {
+    "title": "Required Packages Missing",
+    "description": "Some features may not work until required packages are installed.",
+    "installCommand": "Install command",
+    "feature": {
+      "ports": "Ports",
+      "storage": "Storage",
+      "unknown": "Unknown"
+    }
+  },
   "theme": {
     "dark": "Dark",
     "light": "Light"

@@ -64,6 +64,16 @@
     "scanStartError": "Không thể bắt đầu quét",
     "scanCancelError": "Không thể hủy quét"
   },
+  "requiredPackages": {
+    "title": "Thiếu gói bắt buộc",
+    "description": "Một số tính năng sẽ không hoạt động cho tới khi cài đủ gói bắt buộc.",
+    "installCommand": "Lệnh cài đặt",
+    "feature": {
+      "ports": "Cổng",
+      "storage": "Lưu trữ",
+      "unknown": "Không xác định"
+    }
+  },
   "theme": {
     "dark": "Tối",
     "light": "Sáng"

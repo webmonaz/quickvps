@@ -197,6 +197,8 @@ Key route groups:
 - Metrics/system: `/api/info`, `/api/interval`, `/api/metrics`
 - Operations: `/api/ports`, `/api/ports/:port`, `/api/ncdu/*`, `/api/alerts/*`, `/api/firewall/*`, `/api/packages/*`, `/ws`
 
+`/api/info` also returns required-host-package status for `lsof` (Ports) and `ncdu` (Storage), including a distro-aware install command hint for missing packages.
+
 #### Middleware chain (outermost → innermost)
 
 ```
@@ -218,12 +220,12 @@ React 18 + TypeScript + TailwindCSS single-page application built with Vite. Sou
 Key layers:
 
 - **`src/store/index.ts`** — Zustand store (Immer + subscribeWithSelector). Holds the latest `Snapshot`, 60-point rolling history arrays for network, disk I/O, CPU%, memory%, and swap%, ncdu scan state, and connection status.
-- **`src/hooks/useWebSocket.ts`** — opens the WS connection, dispatches `setSnapshot` on every message, calls `onNcduReady` callback when `ncdu_ready: true` arrives, auto-reconnects after 3 s.
+- **`src/hooks/useWebSocket.ts`** — opens the WS connection, dispatches `setSnapshot` on every message, and triggers `onNcduReady` on `ncdu_ready` transition (`false -> true`) or scan-start edge cases, then auto-reconnects after 3 s.
 - **`src/hooks/useServerInfo.ts`** — fetches `/api/info` once on mount.
 - **`src/components/charts/`** — `HalfGauge` and `RollingLineChart` hold Chart.js instances in `useRef`. Updates are imperative mutations (`chart.data.datasets[0].data = [...]; chart.update('none')`); the canvas DOM node never re-renders.
 - **`src/components/metrics/`** — `CpuCard`, `MemorySwapCard`, `ServerInfoCard`, and other metric sections select only the fields they need from the store via narrow Zustand selectors to prevent unnecessary re-renders on each 2 s push.
 
-Dashboard metrics updates are driven by WS messages; REST endpoints are used for initial server metadata load (`/api/info`), auth/admin workflows, and ncdu result fetch (`/api/ncdu/status`).
+Dashboard metrics updates are driven by WS messages; REST endpoints are used for initial server metadata load (`/api/info`), auth/admin workflows, and one-shot ncdu result fetch (`/api/ncdu/status`) when readiness transitions.
 
 **Dev workflow:**
 ```

@@ -20,8 +20,8 @@ linux-arm64:
 frontend:
 	cd frontend && npm run build
 
-## build-full: build frontend then cross-compile Go binary for Linux amd64
-build-full: frontend linux
+## build-full: build frontend + current OS + Linux amd64 + Linux arm64 binaries
+build-full: frontend build linux linux-arm64
 
 ## tidy: download and tidy go modules
 tidy:
