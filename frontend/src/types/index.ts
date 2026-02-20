@@ -1,3 +1,6 @@
 export type * from './metrics'
 export type * from './ncdu'
 export type * from './api'
+export type * from './alerts'
+export type * from './firewall'
+export type * from './packages'

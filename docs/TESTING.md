@@ -108,6 +108,38 @@ func TestCalcDiskIO_NewDevice(t *testing.T) {
 
 **`internal/metrics/network_test.go`**: same pattern for `calcNet`.
 
+#### `internal/alerts` — evaluator + notifier + crypto
+
+Minimum regression suite:
+
+```go
+func TestEvaluatorCriticalCooldownAndRecovery(t *testing.T) { ... }
+func TestEvaluatorSilencedSuppressesNotifications(t *testing.T) { ... }
+func TestNotifierRetrySuccessAfterFailures(t *testing.T) { ... }
+func TestNotifierPartialFailure(t *testing.T) { ... }
+func TestCipherEncryptDecrypt(t *testing.T) { ... }
+func TestCipherInvalidKey(t *testing.T) { ... }
+```
+
+`internal/server/handlers_alerts_test.go` should verify:
+
+- admin-only mutation on `/api/alerts/config`
+- public mode mutation forbidden (read-only)
+- `/api/alerts/status` returns `read_only=true` in public mode
+
+#### `internal/firewall` and `internal/packages` — parser safety
+
+Add parser-focused tests with fixture strings:
+
+```go
+func TestParseUFWRules(t *testing.T) { ... }
+func TestParseNFTRules(t *testing.T) { ... }
+func TestParseIPTablesRules(t *testing.T) { ... }
+func TestParseAPTUpdates(t *testing.T) { ... }
+func TestParseDNFUpdates(t *testing.T) { ... }
+func TestParsePacmanUpdates(t *testing.T) { ... }
+```
+
 #### `internal/ws` — hub behavior
 
 ```go
@@ -223,6 +255,7 @@ ssh user@test-vps "chmod +x /tmp/quickvps-test && /tmp/quickvps-test --auth=true
 - [ ] With `--auth=false`, dashboard is publicly accessible (no login)
 - [ ] If `--auth=true` and password omitted, startup logs bootstrap credential warning
 - [ ] `/api/info` includes base fields (`hostname`,`os`,`arch`,`uptime`) and extended fields (`auth_enabled`,`interval_ms`,`ncdu_cache_ttl_sec`,`local_ip`,`public_ip`,`dns_servers`,`version`)
+- [ ] `/api/info` includes alert metadata (`alerts_enabled`,`alerts_read_only`,`alerts_history_retention_days`)
 
 ### Dashboard — Metrics
 
@@ -256,6 +289,23 @@ ssh user@test-vps "chmod +x /tmp/quickvps-test && /tmp/quickvps-test --auth=true
 - [ ] Size and percentage values are correct (compare root's total size with `du -sh /`)
 - [ ] Cancel button stops an in-progress scan
 - [ ] Starting a second scan while one is running cancels the first
+
+### Alerts / Notification
+
+- [ ] `GET /api/alerts/config` returns thresholds/channels + secret meta flags (`has_telegram_token`,`has_gmail_password`)
+- [ ] Admin can `PUT /api/alerts/config`; viewer receives 403
+- [ ] In `--auth=false` mode, mutate endpoints (`PUT /api/alerts/config`, `/api/alerts/test`, `/api/alerts/silence`) return 403
+- [ ] `POST /api/alerts/test` sends Telegram + Email using configured recipients
+- [ ] `POST /api/alerts/silence` mutes alerts and `DELETE` clears mute
+- [ ] CPU overload simulation triggers `warning/critical` then `recovery` events in `/api/alerts/history`
+
+### Firewall / Package Audit
+
+- [ ] `/api/firewall/status` reports detected backend (ufw/nftables/iptables or none)
+- [ ] `/api/firewall/rules` returns parsed inbound rules without mutating system state
+- [ ] `/api/firewall/exposures` correlates listener ports with firewall allow rules
+- [ ] `/api/packages/inventory` returns manager + package list (`?limit=&q=` works)
+- [ ] `/api/packages/updates` returns available updates list for detected package manager
 
 ### Deployment
 
@@ -297,6 +347,7 @@ Current baseline coverage includes formatter/threshold helpers and selector logi
 - `src/lib/formatBytes.ts` — boundary values (0, 1023, 1024, 1024³)
 - `src/lib/thresholdColor.ts` — boundary values (59, 60, 84, 85)
 - `src/store/index.ts` — `setSnapshot` correctly pushes to history arrays
+- `src/lib/alerts.ts` — permissions (`canManageAlerts`), comma parsing, retry delay normalization
 
 ### Component tests (incremental target)
 
@@ -305,6 +356,11 @@ Prefer adding React Testing Library coverage for:
 - `ProgressBar` — renders correct width and color class for each threshold zone
 - `HalfGauge` — canvas is mounted; Chart.js `update` is called with new data on re-render
 - `NcduTreeNode` — lazy render: children absent until first click; collapse/expand toggle
+
+Current jsdom component tests:
+
+- `src/pages/__tests__/AlertsPage.test.tsx` — verifies initial data fetch does not spam `/api/alerts/config`
+- `src/pages/__tests__/SettingsPage.test.tsx` — verifies secret rotate/clear controls and payload flags
 
 ### Manual UI checklist
 
@@ -320,6 +376,8 @@ Before merging any `frontend/` change, verify in the browser (use `npm run dev` 
 - [ ] WebSocket disconnect → red banner appears within 3 s
 - [ ] WebSocket reconnect → banner disappears, metrics resume
 - [ ] Server Info card shows hostname, OS/arch, uptime, local/public IP, DNS, and version from `/api/info`
+- [ ] Alerts page loads status/history and test/mute actions work for admin
+- [ ] Settings page Health Alerts section saves config and enforces read-only mode correctly
 
 ---
 

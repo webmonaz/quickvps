@@ -362,6 +362,16 @@ func TestHandleInfoIncludesExtendedFields(t *testing.T) {
 	if !ok || version == "" {
 		t.Fatalf("version missing or empty: %v", body)
 	}
+
+	if _, ok := body["alerts_enabled"].(bool); !ok {
+		t.Fatalf("alerts_enabled missing or invalid type: %v", body)
+	}
+	if _, ok := body["alerts_read_only"].(bool); !ok {
+		t.Fatalf("alerts_read_only missing or invalid type: %v", body)
+	}
+	if _, ok := body["alerts_history_retention_days"].(float64); !ok {
+		t.Fatalf("alerts_history_retention_days missing or invalid type: %v", body)
+	}
 }
 
 func TestHandleNcduCacheStatusAndCancel(t *testing.T) {

@@ -56,10 +56,41 @@ function IconAdmin() {
   )
 }
 
+function IconAlerts() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.3 4.3a2.4 2.4 0 0 1 3.4 0l.6.6a2.4 2.4 0 0 0 1.7.7h.8a2.4 2.4 0 0 1 2.4 2.4v.8a2.4 2.4 0 0 0 .7 1.7l.6.6a2.4 2.4 0 0 1 0 3.4l-.6.6a2.4 2.4 0 0 0-.7 1.7v.8a2.4 2.4 0 0 1-2.4 2.4H16a2.4 2.4 0 0 0-1.7.7l-.6.6a2.4 2.4 0 0 1-3.4 0l-.6-.6a2.4 2.4 0 0 0-1.7-.7h-.8a2.4 2.4 0 0 1-2.4-2.4v-.8a2.4 2.4 0 0 0-.7-1.7l-.6-.6a2.4 2.4 0 0 1 0-3.4l.6-.6a2.4 2.4 0 0 0 .7-1.7V8a2.4 2.4 0 0 1 2.4-2.4h.8a2.4 2.4 0 0 0 1.7-.7z"/>
+      <path d="M12 8v4"/>
+      <path d="M12 16h.01"/>
+    </svg>
+  )
+}
+
+function IconShield() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2l8 4v6c0 5-3.5 9.5-8 10-4.5-.5-8-5-8-10V6z"/>
+    </svg>
+  )
+}
+
+function IconPackage() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 8l9-5 9 5-9 5z"/>
+      <path d="M3 8v8l9 5 9-5V8"/>
+      <path d="M12 13v8"/>
+    </svg>
+  )
+}
+
 const NAV_ITEMS = [
   { to: '/',         labelKey: 'nav.dashboard', Icon: IconDashboard, end: true  },
   { to: '/storage',  labelKey: 'nav.storage',   Icon: IconStorage,   end: false },
   { to: '/ports',    labelKey: 'nav.ports',     Icon: IconPorts,     end: false },
+  { to: '/alerts',   labelKey: 'nav.alerts',    Icon: IconAlerts,    end: false },
+  { to: '/firewall', labelKey: 'nav.firewall',  Icon: IconShield,    end: false },
+  { to: '/packages', labelKey: 'nav.packages',  Icon: IconPackage,   end: false },
   { to: '/settings', labelKey: 'nav.settings',  Icon: IconSettings,  end: false },
 ] as const
 

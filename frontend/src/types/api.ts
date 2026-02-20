@@ -21,6 +21,9 @@ export interface ServerInfo {
   public_ip?: string
   dns_servers?: string[]
   version?: string
+  alerts_enabled?: boolean
+  alerts_read_only?: boolean
+  alerts_history_retention_days?: number
 }
 
 export interface PortListener {

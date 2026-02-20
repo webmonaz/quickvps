@@ -12,6 +12,9 @@ import DashboardPage from '@/pages/DashboardPage'
 import StoragePage from '@/pages/StoragePage'
 import SettingsPage from '@/pages/SettingsPage'
 import PortsPage from '@/pages/PortsPage'
+import AlertsPage from '@/pages/AlertsPage'
+import FirewallPage from '@/pages/FirewallPage'
+import PackagesPage from '@/pages/PackagesPage'
 import LoginPage from '@/pages/LoginPage'
 import AdminPage from '@/pages/AdminPage'
 
@@ -28,6 +31,9 @@ function AuthenticatedRoutes() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/storage" element={<StoragePage />} />
         <Route path="/ports" element={<PortsPage />} />
+        <Route path="/alerts" element={<AlertsPage />} />
+        <Route path="/firewall" element={<FirewallPage />} />
+        <Route path="/packages" element={<PackagesPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/login" element={<Navigate to="/" replace />} />

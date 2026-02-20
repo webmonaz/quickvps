@@ -210,7 +210,7 @@ Frontend (see `frontend/package.json`):
 - `react` + `react-dom` v18, `react-router-dom` v6
 - `zustand` v4 + `immer` v10
 - `chart.js` v4 + `react-chartjs-2` v5
-- `tailwindcss` v3, `vite` v5, `vitest` v3
+- `tailwindcss` v3, `vite` v5, `vitest` v3, `jsdom` (for jsdom component tests)
 
 Do not add new Go dependencies without strong justification. Binary size should stay under ~15 MB.
 Do not add new npm dependencies without updating `README.md` and this file.

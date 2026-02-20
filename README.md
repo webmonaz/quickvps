@@ -13,6 +13,10 @@ A single-binary Go web application that runs on any Linux VPS to monitor system 
 - **Freeze + custom update interval** — pause live updates and adjust refresh interval from Settings
 - **Storage Analyzer** — runs `ncdu` in the background, renders a collapsible directory tree in the browser. Reuses recent same-path scan results (TTL configurable in Settings in seconds, default 600 seconds) to reduce server load. Auto-installs `ncdu` if absent (supports apt, yum, pacman)
 - **Port Scanning + kill by port** — inspect listening TCP/UDP ports and terminate processes bound to a selected port
+- **CPU Health Alerts** — long-running overload detection with warning/critical/recovery transitions, cooldown, mute window, and 30-day history
+- **Telegram + Gmail notifications** — send alerts to Telegram Bot chat IDs and Gmail recipients with retry backoff
+- **Firewall Audit (read-only)** — auto-detects UFW/nftables/iptables, lists inbound rules, and highlights exposed listeners
+- **Package Audit (read-only)** — inventory + available updates across APT, DNF/YUM, Pacman
 - **Session Auth + SQLite users** — bootstrap admin from flags, then sign in via UI session cookie
 - **Server info card** — hostname, OS/arch, uptime, local/public IP, DNS resolvers, app version
 - **Dark theme** — single dark UI with CSS variables, responsive down to mobile
@@ -33,7 +37,7 @@ Open `http://your-server:8080` and sign in with `admin` / `secret`.
 
 ### Build from source
 
-Requires Go 1.21+ and Node.js 18+.
+Requires Go 1.24+ and Node.js 18+.
 
 ```bash
 git clone https://github.com/webmonaz/quickvps
@@ -91,6 +95,12 @@ Environment variables as fallback (flags take precedence):
 | `QUICKVPS_USER`     | `--user`     |
 | `QUICKVPS_PASSWORD` | `--password` |
 
+Additional environment variable:
+
+- `QUICKVPS_ALERTS_KEY` — base64-encoded 32-byte key used to encrypt alert secrets in SQLite (`telegram_bot_token`, `gmail_app_password`)
+- `QUICKVPS_FW_HIGH_RISK_PORTS` — optional comma-separated ports overriding default high-risk firewall policy (e.g. `3306,5432,6379`)
+- `QUICKVPS_FW_MEDIUM_RISK_PORTS` — optional comma-separated ports overriding default medium-risk firewall policy (e.g. `22,25`)
+
 Auth behavior:
 
 - `--auth=false` (default): authentication is disabled (public access).
@@ -146,7 +156,21 @@ When `--auth=true`, API and WebSocket endpoints (except `/api/auth/login`) requi
 | `DELETE` | `/api/ncdu/scan`   | Cancel running scan                      |
 | `GET`    | `/api/ports`       | List listening TCP/UDP ports             |
 | `DELETE` | `/api/ports/:port` | Kill processes bound to the port         |
+| `GET`    | `/api/alerts/config` | Read alert config (read-only in public mode) |
+| `PUT`    | `/api/alerts/config` | Update alert config (admin only, auth mode) |
+| `GET`    | `/api/alerts/status` | Current alert runtime state |
+| `GET`    | `/api/alerts/history` | Alert history (`?limit=&before_id=`) |
+| `POST`   | `/api/alerts/test` | Send test alert (admin only, auth mode) |
+| `POST`   | `/api/alerts/silence` | Mute alerts for minutes `{"minutes":30}` (admin only) |
+| `DELETE` | `/api/alerts/silence` | Clear mute window (admin only) |
+| `GET`    | `/api/firewall/status` | Firewall backend/status summary |
+| `GET`    | `/api/firewall/rules` | Inbound firewall rules (read-only) |
+| `GET`    | `/api/firewall/exposures` | Listener exposure/risk summary |
+| `GET`    | `/api/packages/inventory` | Installed package inventory (`?limit=&q=`) |
+| `GET`    | `/api/packages/updates` | Available package updates |
 | `GET`    | `/ws`              | WebSocket — server pushes snapshot every interval |
+
+Note: firewall/package audit endpoints are Linux-only and return `501 Not Implemented` on macOS/Windows.
 
 WebSocket message shape:
 
@@ -164,6 +188,7 @@ When `ncdu_ready` is `true`, the UI automatically fetches `/api/ncdu/status`.
 
 - `hostname`, `os`, `arch`, `uptime`
 - `auth_enabled`, `interval_ms`, `ncdu_cache_ttl_sec`
+- `alerts_enabled`, `alerts_read_only`, `alerts_history_retention_days`
 - `local_ip`, `public_ip`, `dns_servers`, `version`
 
 ## Project Structure
@@ -186,6 +211,17 @@ quickvps/
 │   │   ├── installer.go       # Auto-detect distro + install ncdu
 │   │   ├── runner.go          # Background subprocess, cancel, status
 │   │   └── parser.go          # Recursive ncdu JSON → DirEntry tree
+│   ├── alerts/                # CPU alert evaluator + notifier + SQLite store
+│   │   ├── types.go
+│   │   ├── evaluator.go
+│   │   ├── notifier.go
+│   │   ├── service.go
+│   │   ├── crypto.go
+│   │   └── store.go
+│   ├── firewall/              # Read-only firewall audit (ufw/nft/iptables)
+│   │   └── audit.go
+│   ├── packages/              # Read-only package inventory/update audit
+│   │   └── audit.go
 │   ├── ws/                    # WebSocket hub
 │   │   ├── hub.go             # Register / unregister / broadcast
 │   │   └── client.go          # Read/write pumps, ping-pong keepalive
@@ -203,7 +239,7 @@ quickvps/
 │   │   ├── store/             # Zustand store with Immer
 │   │   ├── types/             # TypeScript interfaces for API contracts
 │   │   ├── lib/               # formatBytes, thresholdColor, chartConfig
-│   │   └── pages/             # DashboardPage (/ route)
+│   │   └── pages/             # Dashboard + Alerts + Firewall + Packages + Settings
 │   └── vite.config.ts         # Builds to ../web/ for Go embed
 ├── web/                       # Embedded assets (//go:embed web) — built by Vite
 │   ├── index.html
@@ -227,7 +263,7 @@ quickvps/
 
 The web UI uses [Chart.js](https://www.chartjs.org/) bundled via Vite with `react-chartjs-2`.
 
-**Frontend dependencies** (see `frontend/package.json`): React 18, react-router-dom, Zustand, Immer, chart.js, react-chartjs-2, TailwindCSS, Vite, Vitest.
+**Frontend dependencies** (see `frontend/package.json`): React 18, react-router-dom, Zustand, Immer, chart.js, react-chartjs-2, TailwindCSS, Vite, Vitest, jsdom (component tests).
 
 ## License
 

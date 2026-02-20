@@ -12,8 +12,11 @@ import (
 	"strings"
 	"time"
 
+	"quickvps/internal/alerts"
 	"quickvps/internal/auth"
+	"quickvps/internal/firewall"
 	"quickvps/internal/ncdu"
+	packagesaudit "quickvps/internal/packages"
 	"quickvps/internal/ports"
 	"quickvps/internal/ws"
 )
@@ -62,6 +65,17 @@ func (s *Server) requireAdmin(w http.ResponseWriter, r *http.Request) (auth.User
 		return auth.User{}, false
 	}
 	return user, true
+}
+
+func (s *Server) requireAlertMutationAccess(w http.ResponseWriter, r *http.Request) bool {
+	if s.authDisabled {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "read-only in public mode"})
+		return false
+	}
+	if _, ok := s.requireAdmin(w, r); !ok {
+		return false
+	}
+	return true
 }
 
 func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
@@ -364,19 +378,30 @@ var AppVersion = "dev"
 func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 	hostname, _ := os.Hostname()
 	localIP, publicIP := getLocalIPs()
+	alertsEnabled := false
+	alertsReadOnly := true
+	historyDays := int64(alerts.DefaultHistoryRetentionDays)
+	if s.alerts != nil {
+		alertsEnabled = s.alerts.IsEnabled()
+		alertsReadOnly = s.authDisabled
+		historyDays = int64(s.alerts.HistoryRetentionDays())
+	}
 
 	info := map[string]any{
-		"hostname":           hostname,
-		"os":                 runtime.GOOS,
-		"arch":               runtime.GOARCH,
-		"uptime":             getUptime(),
-		"auth_enabled":       !s.authDisabled,
-		"interval_ms":        s.collector.Interval().Milliseconds(),
-		"ncdu_cache_ttl_sec": int64(s.runner.CacheTTL().Seconds()),
-		"local_ip":           localIP,
-		"public_ip":          publicIP,
-		"dns_servers":        getDNSServers(),
-		"version":            AppVersion,
+		"hostname":                      hostname,
+		"os":                            runtime.GOOS,
+		"arch":                          runtime.GOARCH,
+		"uptime":                        getUptime(),
+		"auth_enabled":                  !s.authDisabled,
+		"interval_ms":                   s.collector.Interval().Milliseconds(),
+		"ncdu_cache_ttl_sec":            int64(s.runner.CacheTTL().Seconds()),
+		"local_ip":                      localIP,
+		"public_ip":                     publicIP,
+		"dns_servers":                   getDNSServers(),
+		"version":                       AppVersion,
+		"alerts_enabled":                alertsEnabled,
+		"alerts_read_only":              alertsReadOnly,
+		"alerts_history_retention_days": historyDays,
 	}
 	writeJSON(w, http.StatusOK, info)
 }
@@ -668,4 +693,242 @@ func (s *Server) handleInterval(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+func (s *Server) handleAlertsConfig(w http.ResponseWriter, r *http.Request) {
+	if s.alerts == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "alerts service unavailable"})
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		view := s.alerts.ConfigView(s.authDisabled)
+		writeJSON(w, http.StatusOK, view)
+
+	case http.MethodPut:
+		if !s.requireAlertMutationAccess(w, r) {
+			return
+		}
+
+		var body alerts.UpdateConfigInput
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
+			return
+		}
+
+		view, err := s.alerts.UpdateConfig(body)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		view.ReadOnly = false
+		writeJSON(w, http.StatusOK, view)
+
+	default:
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (s *Server) handleAlertsStatus(w http.ResponseWriter, r *http.Request) {
+	if s.alerts == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "alerts service unavailable"})
+		return
+	}
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	writeJSON(w, http.StatusOK, s.alerts.Status(s.authDisabled))
+}
+
+func (s *Server) handleAlertsHistory(w http.ResponseWriter, r *http.Request) {
+	if s.alerts == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "alerts service unavailable"})
+		return
+	}
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	limit := 50
+	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed <= 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid limit"})
+			return
+		}
+		limit = parsed
+	}
+
+	var beforeID int64
+	if raw := strings.TrimSpace(r.URL.Query().Get("before_id")); raw != "" {
+		parsed, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || parsed <= 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid before_id"})
+			return
+		}
+		beforeID = parsed
+	}
+
+	events, err := s.alerts.ListHistory(limit, beforeID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"events": events})
+}
+
+func (s *Server) handleAlertsTest(w http.ResponseWriter, r *http.Request) {
+	if s.alerts == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "alerts service unavailable"})
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !s.requireAlertMutationAccess(w, r) {
+		return
+	}
+
+	event, err := s.alerts.TriggerTest(r.Context())
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"event": event})
+}
+
+func (s *Server) handleAlertsSilence(w http.ResponseWriter, r *http.Request) {
+	if s.alerts == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "alerts service unavailable"})
+		return
+	}
+
+	switch r.Method {
+	case http.MethodPost:
+		if !s.requireAlertMutationAccess(w, r) {
+			return
+		}
+		var body struct {
+			Minutes int `json:"minutes"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
+			return
+		}
+		until, err := s.alerts.SetSilence(body.Minutes)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"muted_until": until})
+
+	case http.MethodDelete:
+		if !s.requireAlertMutationAccess(w, r) {
+			return
+		}
+		if err := s.alerts.ClearSilence(); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "cleared"})
+
+	default:
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (s *Server) handleFirewallStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !firewall.Supported() {
+		writeJSON(w, http.StatusNotImplemented, map[string]any{
+			"error":     "firewall audit is supported on Linux only",
+			"supported": false,
+			"goos":      runtime.GOOS,
+		})
+		return
+	}
+	writeJSON(w, http.StatusOK, firewall.GetStatus())
+}
+
+func (s *Server) handleFirewallRules(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !firewall.Supported() {
+		writeJSON(w, http.StatusNotImplemented, map[string]any{
+			"error":     "firewall audit is supported on Linux only",
+			"supported": false,
+			"goos":      runtime.GOOS,
+		})
+		return
+	}
+	rules, err := firewall.ListRules()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"rules": rules})
+}
+
+func (s *Server) handleFirewallExposures(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !firewall.Supported() {
+		writeJSON(w, http.StatusNotImplemented, map[string]any{
+			"error":     "firewall audit is supported on Linux only",
+			"supported": false,
+			"goos":      runtime.GOOS,
+		})
+		return
+	}
+	exposures, err := firewall.ListExposures()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"exposures": exposures})
+}
+
+func (s *Server) handlePackagesInventory(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !packagesaudit.Supported() {
+		writeJSON(w, http.StatusNotImplemented, map[string]any{
+			"error":     "package audit is supported on Linux only",
+			"supported": false,
+			"goos":      runtime.GOOS,
+		})
+		return
+	}
+	limit := packagesaudit.ParseLimit(r.URL.Query().Get("limit"), 100)
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	writeJSON(w, http.StatusOK, packagesaudit.Inventory(limit, q))
+}
+
+func (s *Server) handlePackagesUpdates(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !packagesaudit.Supported() {
+		writeJSON(w, http.StatusNotImplemented, map[string]any{
+			"error":     "package audit is supported on Linux only",
+			"supported": false,
+			"goos":      runtime.GOOS,
+		})
+		return
+	}
+	writeJSON(w, http.StatusOK, packagesaudit.Updates())
 }
