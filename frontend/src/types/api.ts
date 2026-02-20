@@ -21,9 +21,18 @@ export interface ServerInfo {
   public_ip?: string
   dns_servers?: string[]
   version?: string
+  required_packages?: RequiredPackage[]
+  missing_required_packages?: string[]
+  required_packages_install_cmd?: string
   alerts_enabled?: boolean
   alerts_read_only?: boolean
   alerts_history_retention_days?: number
+}
+
+export interface RequiredPackage {
+  name: string
+  installed: boolean
+  required_for: string
 }
 
 export interface PortListener {

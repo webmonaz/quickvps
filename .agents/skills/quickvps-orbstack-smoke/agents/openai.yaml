@@ -1,0 +1,4 @@
+interface:
+  display_name: "QuickVPS OrbStack Smoke"
+  short_description: "Build, ship, and smoke-check QuickVPS on OrbStack machine."
+  default_prompt: "Build current changes, push quickvps-linux-arm64 to ubuntu@orb, start the binary, and verify the app responds at ubuntu.orb.local."

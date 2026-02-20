@@ -13,6 +13,7 @@ A single-binary Go web application that runs on any Linux VPS to monitor system 
 - **Freeze + custom update interval** — pause live updates and adjust refresh interval from Settings
 - **Storage Analyzer** — runs `ncdu` in the background, renders a collapsible directory tree in the browser. Reuses recent same-path scan results (TTL configurable in Settings in seconds, default 600 seconds) to reduce server load. Auto-installs `ncdu` if absent (supports apt, yum, pacman)
 - **Port Scanning + kill by port** — inspect listening TCP/UDP ports and terminate processes bound to a selected port
+- **Required package visibility** — global warning banner shows missing `ncdu` / `lsof` dependencies and install command hints
 - **CPU Health Alerts** — long-running overload detection with warning/critical/recovery transitions, cooldown, mute window, and 30-day history
 - **Telegram + Gmail notifications** — send alerts to Telegram Bot chat IDs and Gmail recipients with retry backoff
 - **Firewall Audit (read-only)** — auto-detects UFW/nftables/iptables, lists inbound rules, and highlights exposed listeners
@@ -101,6 +102,11 @@ Additional environment variable:
 - `QUICKVPS_FW_HIGH_RISK_PORTS` — optional comma-separated ports overriding default high-risk firewall policy (e.g. `3306,5432,6379`)
 - `QUICKVPS_FW_MEDIUM_RISK_PORTS` — optional comma-separated ports overriding default medium-risk firewall policy (e.g. `22,25`)
 
+Host packages required for full feature coverage:
+
+- `ncdu` — required by Storage Analyzer
+- `lsof` — required by Ports and exposure correlation
+
 Auth behavior:
 
 - `--auth=false` (default): authentication is disabled (public access).
@@ -182,12 +188,13 @@ WebSocket message shape:
 }
 ```
 
-When `ncdu_ready` is `true`, the UI automatically fetches `/api/ncdu/status`.
+When `ncdu_ready` transitions to `true` (or a scan just started while the ready flag is still `true`), the UI fetches `/api/ncdu/status` once.
 
 `GET /api/info` returns:
 
 - `hostname`, `os`, `arch`, `uptime`
 - `auth_enabled`, `interval_ms`, `ncdu_cache_ttl_sec`
+- `required_packages`, `missing_required_packages`, `required_packages_install_cmd`
 - `alerts_enabled`, `alerts_read_only`, `alerts_history_retention_days`
 - `local_ip`, `public_ip`, `dns_servers`, `version`
 

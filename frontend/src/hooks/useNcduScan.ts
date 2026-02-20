@@ -2,6 +2,7 @@ import { useCallback, useRef } from 'react'
 import { useStore } from '@/store'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '@/hooks/useToast'
+import { errorMessage, readAPIError } from '@/lib/httpError'
 import type { ScanResult } from '@/types/ncdu'
 
 export function useNcduScan() {
@@ -16,6 +17,9 @@ export function useNcduScan() {
   const fetchStatus = useCallback(async () => {
     try {
       const r = await fetch('/api/ncdu/status')
+      if (!r.ok) {
+        throw new Error(await readAPIError(r, 'failed to fetch scan status'))
+      }
       const result = await r.json() as ScanResult
       setScanResult(result)
       statusErrorNotifiedRef.current = false
@@ -25,7 +29,7 @@ export function useNcduScan() {
     } catch (err) {
       console.error('fetchNcdu error:', err)
       if (!statusErrorNotifiedRef.current) {
-        showError(t('storage.fetchStatusError'))
+        showError(errorMessage(err, t('storage.fetchStatusError')))
         statusErrorNotifiedRef.current = true
       }
     }
@@ -41,7 +45,7 @@ export function useNcduScan() {
         body: JSON.stringify({ path: scanPath }),
       })
       if (!r.ok) {
-        throw new Error('failed to start scan')
+        throw new Error(await readAPIError(r, 'failed to start scan'))
       }
       const payload = await r.json() as { status?: string }
       if (payload.status === 'cached' || payload.status === 'running') {
@@ -50,16 +54,19 @@ export function useNcduScan() {
     } catch (err) {
       console.error('Scan start error:', err)
       setIsScanning(false)
-      showError(t('storage.scanStartError'))
+      showError(errorMessage(err, t('storage.scanStartError')))
     }
   }, [scanPath, setIsScanning, setScanResult, fetchStatus, showError, t])
 
   const cancelScan = useCallback(async () => {
     try {
-      await fetch('/api/ncdu/scan', { method: 'DELETE' })
+      const r = await fetch('/api/ncdu/scan', { method: 'DELETE' })
+      if (!r.ok) {
+        throw new Error(await readAPIError(r, 'failed to cancel scan'))
+      }
     } catch (err) {
       console.error('Scan cancel error:', err)
-      showError(t('storage.scanCancelError'))
+      showError(errorMessage(err, t('storage.scanCancelError')))
     }
     setIsScanning(false)
     setScanResult(null)

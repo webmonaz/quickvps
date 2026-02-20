@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"runtime"
 	"strconv"
 	"strings"
@@ -20,6 +21,14 @@ import (
 	"quickvps/internal/ports"
 	"quickvps/internal/ws"
 )
+
+type requiredPackage struct {
+	Name        string `json:"name"`
+	Installed   bool   `json:"installed"`
+	RequiredFor string `json:"required_for"`
+}
+
+var commandLookPath = exec.LookPath
 
 func mustJSON(v any) string {
 	b, err := json.Marshal(v)
@@ -378,6 +387,8 @@ var AppVersion = "dev"
 func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 	hostname, _ := os.Hostname()
 	localIP, publicIP := getLocalIPs()
+	requiredPackages := requiredPackagesStatus()
+	missingPackages := missingRequiredPackages(requiredPackages)
 	alertsEnabled := false
 	alertsReadOnly := true
 	historyDays := int64(alerts.DefaultHistoryRetentionDays)
@@ -399,11 +410,53 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 		"public_ip":                     publicIP,
 		"dns_servers":                   getDNSServers(),
 		"version":                       AppVersion,
+		"required_packages":             requiredPackages,
+		"missing_required_packages":     missingPackages,
+		"required_packages_install_cmd": requiredPackagesInstallCommand(missingPackages),
 		"alerts_enabled":                alertsEnabled,
 		"alerts_read_only":              alertsReadOnly,
 		"alerts_history_retention_days": historyDays,
 	}
 	writeJSON(w, http.StatusOK, info)
+}
+
+func requiredPackagesStatus() []requiredPackage {
+	entries := []requiredPackage{
+		{Name: "lsof", RequiredFor: "ports"},
+		{Name: "ncdu", RequiredFor: "storage"},
+	}
+	for i := range entries {
+		_, err := commandLookPath(entries[i].Name)
+		entries[i].Installed = err == nil
+	}
+	return entries
+}
+
+func missingRequiredPackages(entries []requiredPackage) []string {
+	missing := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if !entry.Installed {
+			missing = append(missing, entry.Name)
+		}
+	}
+	return missing
+}
+
+func requiredPackagesInstallCommand(missing []string) string {
+	if len(missing) == 0 {
+		return ""
+	}
+
+	switch ncdu.DetectDistro() {
+	case ncdu.DistroApt:
+		return "sudo apt-get install -y " + strings.Join(missing, " ")
+	case ncdu.DistroYum:
+		return "sudo yum install -y " + strings.Join(missing, " ")
+	case ncdu.DistroPacman:
+		return "sudo pacman -S --noconfirm " + strings.Join(missing, " ")
+	default:
+		return "sudo apt-get install -y " + strings.Join(missing, " ")
+	}
 }
 
 // getLocalIPs returns the primary local and public IPv4 addresses.
