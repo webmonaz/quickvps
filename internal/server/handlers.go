@@ -1,9 +1,11 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -29,6 +31,16 @@ type requiredPackage struct {
 }
 
 var commandLookPath = exec.LookPath
+
+var publicIPv4Providers = []string{
+	"https://api.ipify.org",
+	"https://ipv4.icanhazip.com",
+	"https://checkip.amazonaws.com",
+}
+
+var publicIPHTTPClient = &http.Client{Timeout: 1200 * time.Millisecond}
+var detectPrimaryLocalIPv4 = getPrimaryLocalIPv4
+var detectPublicIPv4 = lookupPublicIPv4
 
 func mustJSON(v any) string {
 	b, err := json.Marshal(v)
@@ -386,7 +398,7 @@ var AppVersion = "dev"
 
 func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 	hostname, _ := os.Hostname()
-	localIP, publicIP := getLocalIPs()
+	localIP, publicIP := getLocalIPs(r.Context())
 	requiredPackages := requiredPackagesStatus()
 	missingPackages := missingRequiredPackages(requiredPackages)
 	alertsEnabled := false
@@ -459,14 +471,39 @@ func requiredPackagesInstallCommand(missing []string) string {
 	}
 }
 
-// getLocalIPs returns the primary local and public IPv4 addresses.
-// On a VPS where a public IP is assigned directly to an interface, both may be
-// the same value. On a NAT'd host the local IP will be a private RFC-1918
-// address and public_ip will be empty / equal to local_ip.
-func getLocalIPs() (localIP string, publicIP string) {
+// getLocalIPs returns the routed local IPv4 and best-effort public IPv4.
+// If public lookup fails, public_ip falls back to local_ip.
+func getLocalIPs(ctx context.Context) (localIP string, publicIP string) {
+	localIP = detectPrimaryLocalIPv4()
+	if localIP == "" {
+		localIP = "unknown"
+	}
+
+	if ip := net.ParseIP(localIP); ip != nil && ip.To4() != nil && !isPrivateIP(ip) {
+		return localIP, localIP
+	}
+
+	if resolvedPublicIP, err := detectPublicIPv4(ctx); err == nil && resolvedPublicIP != "" {
+		return localIP, resolvedPublicIP
+	}
+
+	return localIP, localIP
+}
+
+func getPrimaryLocalIPv4() string {
+	conn, err := net.Dial("udp4", "8.8.8.8:53")
+	if err == nil {
+		defer conn.Close()
+		if udpAddr, ok := conn.LocalAddr().(*net.UDPAddr); ok && udpAddr.IP != nil {
+			if ipv4 := udpAddr.IP.To4(); ipv4 != nil && !ipv4.IsLoopback() {
+				return ipv4.String()
+			}
+		}
+	}
+
 	ifaces, err := net.Interfaces()
 	if err != nil {
-		return "unknown", "unknown"
+		return ""
 	}
 	for _, iface := range ifaces {
 		if iface.Flags&net.FlagLoopback != 0 || iface.Flags&net.FlagUp == 0 {
@@ -487,21 +524,37 @@ func getLocalIPs() (localIP string, publicIP string) {
 			if ip == nil || ip.IsLoopback() || ip.To4() == nil {
 				continue
 			}
-			if localIP == "" {
-				localIP = ip.String()
-			}
-			if !isPrivateIP(ip) && publicIP == "" {
-				publicIP = ip.String()
-			}
+			return ip.String()
 		}
 	}
-	if localIP == "" {
-		localIP = "unknown"
+	return ""
+}
+
+func lookupPublicIPv4(ctx context.Context) (string, error) {
+	for _, endpoint := range publicIPv4Providers {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+		if err != nil {
+			continue
+		}
+		resp, err := publicIPHTTPClient.Do(req)
+		if err != nil {
+			continue
+		}
+
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, 64))
+		_ = resp.Body.Close()
+		if readErr != nil || resp.StatusCode != http.StatusOK {
+			continue
+		}
+
+		ipStr := strings.TrimSpace(string(body))
+		ip := net.ParseIP(ipStr)
+		if ip == nil || ip.To4() == nil || isPrivateIP(ip) {
+			continue
+		}
+		return ip.String(), nil
 	}
-	if publicIP == "" {
-		publicIP = localIP
-	}
-	return
+	return "", errors.New("public IPv4 unavailable")
 }
 
 func isPrivateIP(ip net.IP) bool {

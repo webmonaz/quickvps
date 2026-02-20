@@ -2,7 +2,7 @@
 
 A single-binary Go web application that runs on any Linux VPS to monitor system resources in real-time. No dependencies, no Docker, no configuration files — drop the binary, set a password, done.
 
-![Dashboard](docs/screenshot.png)
+![Dashboard Overview](docs/screenshots/dashboard-overview.png)
 
 ## Features
 
@@ -22,6 +22,20 @@ A single-binary Go web application that runs on any Linux VPS to monitor system 
 - **Server info card** — hostname, OS/arch, uptime, local/public IP, DNS resolvers, app version
 - **Dark theme** — single dark UI with CSS variables, responsive down to mobile
 - **Single binary** — all web assets are embedded via `//go:embed`; just `scp` and run
+
+## Screenshots
+
+### Dashboard Overview
+
+![Dashboard Overview](docs/screenshots/dashboard-overview.png)
+
+### Storage Analyzer
+
+![Storage Analyzer](docs/screenshots/storage-analyzer.png)
+
+### Alerts
+
+![Alerts Page](docs/screenshots/alerts-page.png)
 
 ## Quick Start
 

@@ -2,7 +2,9 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -443,6 +445,63 @@ func TestHandleInfoIncludesExtendedFields(t *testing.T) {
 	}
 	if _, ok := body["alerts_history_retention_days"].(float64); !ok {
 		t.Fatalf("alerts_history_retention_days missing or invalid type: %v", body)
+	}
+}
+
+func TestGetLocalIPsUsesResolvedPublicIPv4(t *testing.T) {
+	origDetectLocal := detectPrimaryLocalIPv4
+	origDetectPublic := detectPublicIPv4
+	detectPrimaryLocalIPv4 = func() string { return "192.168.1.20" }
+	detectPublicIPv4 = func(context.Context) (string, error) { return "203.0.113.42", nil }
+	t.Cleanup(func() {
+		detectPrimaryLocalIPv4 = origDetectLocal
+		detectPublicIPv4 = origDetectPublic
+	})
+
+	localIP, publicIP := getLocalIPs(context.Background())
+	if localIP != "192.168.1.20" {
+		t.Fatalf("localIP = %q, want %q", localIP, "192.168.1.20")
+	}
+	if publicIP != "203.0.113.42" {
+		t.Fatalf("publicIP = %q, want %q", publicIP, "203.0.113.42")
+	}
+}
+
+func TestGetLocalIPsFallsBackToLocalWhenPublicLookupFails(t *testing.T) {
+	origDetectLocal := detectPrimaryLocalIPv4
+	origDetectPublic := detectPublicIPv4
+	detectPrimaryLocalIPv4 = func() string { return "10.0.0.5" }
+	detectPublicIPv4 = func(context.Context) (string, error) { return "", errors.New("lookup failed") }
+	t.Cleanup(func() {
+		detectPrimaryLocalIPv4 = origDetectLocal
+		detectPublicIPv4 = origDetectPublic
+	})
+
+	localIP, publicIP := getLocalIPs(context.Background())
+	if localIP != "10.0.0.5" {
+		t.Fatalf("localIP = %q, want %q", localIP, "10.0.0.5")
+	}
+	if publicIP != "10.0.0.5" {
+		t.Fatalf("publicIP = %q, want %q", publicIP, "10.0.0.5")
+	}
+}
+
+func TestGetLocalIPsReturnsUnknownWhenLocalUnavailable(t *testing.T) {
+	origDetectLocal := detectPrimaryLocalIPv4
+	origDetectPublic := detectPublicIPv4
+	detectPrimaryLocalIPv4 = func() string { return "" }
+	detectPublicIPv4 = func(context.Context) (string, error) { return "", errors.New("lookup failed") }
+	t.Cleanup(func() {
+		detectPrimaryLocalIPv4 = origDetectLocal
+		detectPublicIPv4 = origDetectPublic
+	})
+
+	localIP, publicIP := getLocalIPs(context.Background())
+	if localIP != "unknown" {
+		t.Fatalf("localIP = %q, want %q", localIP, "unknown")
+	}
+	if publicIP != "unknown" {
+		t.Fatalf("publicIP = %q, want %q", publicIP, "unknown")
 	}
 }
 
