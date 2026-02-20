@@ -1,6 +1,6 @@
 # Design System
 
-QuickVPS uses a fixed dark theme. All design tokens are expressed as **Tailwind CSS utility classes** referencing custom colors defined in `frontend/tailwind.config.ts`. Never hardcode a hex color in JSX or inline styles — always use the token class or `getThresholdHex()` from `src/lib/thresholdColor.ts`.
+QuickVPS uses a fixed dark theme. All design tokens are expressed as **Tailwind CSS utility classes** referencing custom colors defined in `frontend/tailwind.config.ts`. Prefer token classes for UI surfaces/text. For Chart.js datasets or computed threshold fills, use explicit hex via `getThresholdHex()` or centralized palette constants.
 
 ---
 
@@ -163,10 +163,23 @@ Height: `h-1.5` (6px). Track: `bg-border-base`. Fill color from `getThresholdHex
     { label: 'Recv', color: '#3ddc84', data: recvHistory },
     { label: 'Sent', color: '#f87171', data: sentHistory },
   ]}
+  yFormat="bytes/s"
 />
 ```
 
 Chart instance in `useRef`. Y-axis: 4 ticks, bytes/s format. X-axis: hidden.
+
+`RollingLineChart` props:
+
+```ts
+type RollingLineChartProps = {
+  datasets: Array<{ label: string; color: string; data: number[] }>
+  yFormat?: 'bytes/s' | 'percent'
+}
+```
+
+- `yFormat="bytes/s"`: human-readable bandwidth/disk rate labels.
+- `yFormat="percent"`: fixed `0..100` axis for CPU/memory/swap history.
 
 ### Button
 
@@ -223,9 +236,9 @@ Tailwind responsive grid classes. All grids collapse to 1 column on mobile (`sm:
 
 | Section | Classes |
 |---------|---------|
-| Gauges (CPU / Mem / Swap) | `grid grid-cols-1 sm:grid-cols-3 gap-4` |
-| Charts (Network / Disk I/O) | `grid grid-cols-1 sm:grid-cols-2 gap-4` |
-| Disk cards | `grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3` |
+| Row 1 (CPU \| Memory+Swap \| Server Info) | `grid grid-cols-1 sm:grid-cols-3 gap-4` |
+| Row 2 (Network \| Disk I/O \| Interfaces) | `grid grid-cols-1 sm:grid-cols-3 gap-4` |
+| System storage cards | `grid grid-cols-1 sm:grid-cols-2 gap-3` |
 
 ---
 
@@ -251,7 +264,7 @@ Tailwind responsive grid classes. All grids collapse to 1 column on mobile (`sm:
 - Use narrow Zustand selectors to avoid re-renders on every 2 s WS push
 
 **Don't:**
-- Hardcode `#hex` or `rgb()` values in JSX or inline styles
+- Hardcode `#hex` for regular text/background/border styling in JSX
 - Access `useStore(s => s.snapshot)` directly (subscribes to the whole snapshot — re-renders every 2 s)
 - Use `useState` for Chart.js data — use `useRef` + imperative update
 - Add light-mode styles — this tool is dark-only in Phase 1

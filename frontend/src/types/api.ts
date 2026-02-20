@@ -17,6 +17,10 @@ export interface ServerInfo {
   interval_ms?: number
   ncdu_cache_ttl_sec?: number
   ncdu_cache_ttl_ms?: number
+  local_ip?: string
+  public_ip?: string
+  dns_servers?: string[]
+  version?: string
 }
 
 export interface PortListener {

@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -277,6 +278,89 @@ func TestHandleIntervalGetPut(t *testing.T) {
 	}
 	if collector.Interval() != 1500*time.Millisecond {
 		t.Fatalf("collector.Interval() = %s, want %s", collector.Interval(), 1500*time.Millisecond)
+	}
+}
+
+func TestHandleInfoIncludesExtendedFields(t *testing.T) {
+	s, collector, runner := newServerForSystemTests()
+	s.authDisabled = false
+
+	req := httptest.NewRequest(http.MethodGet, "/api/info", nil)
+	rec := httptest.NewRecorder()
+	s.handleInfo(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("handleInfo() status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	body := decodeBody(t, rec)
+
+	if body["hostname"] == nil {
+		t.Fatalf("hostname missing: %v", body)
+	}
+	if body["os"] == nil {
+		t.Fatalf("os missing: %v", body)
+	}
+	if body["arch"] == nil {
+		t.Fatalf("arch missing: %v", body)
+	}
+	if body["uptime"] == nil {
+		t.Fatalf("uptime missing: %v", body)
+	}
+
+	intervalMS, ok := body["interval_ms"].(float64)
+	if !ok {
+		t.Fatalf("interval_ms missing or invalid type: %v", body)
+	}
+	if int64(intervalMS) != collector.Interval().Milliseconds() {
+		t.Fatalf("interval_ms = %d, want %d", int64(intervalMS), collector.Interval().Milliseconds())
+	}
+
+	cacheTTLSec, ok := body["ncdu_cache_ttl_sec"].(float64)
+	if !ok {
+		t.Fatalf("ncdu_cache_ttl_sec missing or invalid type: %v", body)
+	}
+	if int64(cacheTTLSec) != int64(runner.CacheTTL().Seconds()) {
+		t.Fatalf("ncdu_cache_ttl_sec = %d, want %d", int64(cacheTTLSec), int64(runner.CacheTTL().Seconds()))
+	}
+
+	authEnabled, ok := body["auth_enabled"].(bool)
+	if !ok {
+		t.Fatalf("auth_enabled missing or invalid type: %v", body)
+	}
+	if !authEnabled {
+		t.Fatalf("auth_enabled = false, want true")
+	}
+
+	localIP, ok := body["local_ip"].(string)
+	if !ok || localIP == "" {
+		t.Fatalf("local_ip missing or empty: %v", body)
+	}
+	publicIP, ok := body["public_ip"].(string)
+	if !ok || publicIP == "" {
+		t.Fatalf("public_ip missing or empty: %v", body)
+	}
+	if localIP != "unknown" && net.ParseIP(localIP) == nil {
+		t.Fatalf("local_ip = %q, want valid IPv4 or unknown", localIP)
+	}
+	if publicIP != "unknown" && net.ParseIP(publicIP) == nil {
+		t.Fatalf("public_ip = %q, want valid IPv4 or unknown", publicIP)
+	}
+
+	dnsServersRaw, ok := body["dns_servers"].([]any)
+	if !ok {
+		t.Fatalf("dns_servers missing or invalid type: %v", body)
+	}
+	for i, entry := range dnsServersRaw {
+		s, ok := entry.(string)
+		if !ok || s == "" {
+			t.Fatalf("dns_servers[%d] invalid: %#v", i, entry)
+		}
+	}
+
+	version, ok := body["version"].(string)
+	if !ok || version == "" {
+		t.Fatalf("version missing or empty: %v", body)
 	}
 }
 

@@ -24,7 +24,7 @@ export const NetworkSection = memo(function NetworkSection() {
           <span><span className="text-accent-red">—</span> {t('network.sent')}</span>
         </div>
       </div>
-      <div className="h-36">
+      <div className="h-28">
         <RollingLineChart datasets={datasets} />
       </div>
     </Card>

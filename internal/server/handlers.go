@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"runtime"
@@ -358,8 +359,11 @@ func (s *Server) handleUserAudit(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"entries": entries})
 }
 
+var AppVersion = "dev"
+
 func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 	hostname, _ := os.Hostname()
+	localIP, publicIP := getLocalIPs()
 
 	info := map[string]any{
 		"hostname":           hostname,
@@ -369,8 +373,92 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 		"auth_enabled":       !s.authDisabled,
 		"interval_ms":        s.collector.Interval().Milliseconds(),
 		"ncdu_cache_ttl_sec": int64(s.runner.CacheTTL().Seconds()),
+		"local_ip":           localIP,
+		"public_ip":          publicIP,
+		"dns_servers":        getDNSServers(),
+		"version":            AppVersion,
 	}
 	writeJSON(w, http.StatusOK, info)
+}
+
+// getLocalIPs returns the primary local and public IPv4 addresses.
+// On a VPS where a public IP is assigned directly to an interface, both may be
+// the same value. On a NAT'd host the local IP will be a private RFC-1918
+// address and public_ip will be empty / equal to local_ip.
+func getLocalIPs() (localIP string, publicIP string) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return "unknown", "unknown"
+	}
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagLoopback != 0 || iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, addr := range addrs {
+			var ip net.IP
+			switch v := addr.(type) {
+			case *net.IPNet:
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
+			}
+			if ip == nil || ip.IsLoopback() || ip.To4() == nil {
+				continue
+			}
+			if localIP == "" {
+				localIP = ip.String()
+			}
+			if !isPrivateIP(ip) && publicIP == "" {
+				publicIP = ip.String()
+			}
+		}
+	}
+	if localIP == "" {
+		localIP = "unknown"
+	}
+	if publicIP == "" {
+		publicIP = localIP
+	}
+	return
+}
+
+func isPrivateIP(ip net.IP) bool {
+	privateCIDRs := []string{
+		"10.0.0.0/8",
+		"172.16.0.0/12",
+		"192.168.0.0/16",
+		"100.64.0.0/10",
+		"169.254.0.0/16",
+	}
+	for _, cidr := range privateCIDRs {
+		_, block, err := net.ParseCIDR(cidr)
+		if err == nil && block.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+func getDNSServers() []string {
+	data, err := os.ReadFile("/etc/resolv.conf")
+	if err != nil {
+		return nil
+	}
+	var servers []string
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "nameserver ") {
+			server := strings.TrimSpace(strings.TrimPrefix(line, "nameserver "))
+			if server != "" {
+				servers = append(servers, server)
+			}
+		}
+	}
+	return servers
 }
 
 func getUptime() string {

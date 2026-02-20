@@ -1,0 +1,4 @@
+interface:
+  display_name: "QuickVPS Docs Sync"
+  short_description: "Detect docs drift from source code"
+  default_prompt: "Check QuickVPS docs for drift against routes, flags, and /api/info fields."

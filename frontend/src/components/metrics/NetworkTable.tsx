@@ -14,25 +14,25 @@ export const NetworkTable = memo(function NetworkTable() {
   return (
     <Card>
       <CardTitle>{t('networkInterfaces.title')}</CardTitle>
-      <div className="overflow-auto max-h-64 pr-2">
+      <div className="overflow-auto max-h-48 pr-2">
         <table className="w-full text-xs font-mono">
           <thead className="sticky top-0 bg-bg-card z-10">
             <tr className="text-text-muted border-b border-border-base">
-              <th className="text-left pb-2 pr-4">{t('networkInterfaces.interface')}</th>
-              <th className="text-right pb-2 pr-4">{t('networkInterfaces.recvRate')}</th>
-              <th className="text-right pb-2 pr-4">{t('networkInterfaces.sentRate')}</th>
-              <th className="text-right pb-2 pr-4">{t('networkInterfaces.totalRecv')}</th>
-              <th className="text-right pb-2 pr-4">{t('networkInterfaces.totalSent')}</th>
+              <th className="text-left pb-2 pr-3">{t('networkInterfaces.interface')}</th>
+              <th className="text-right pb-2 pr-3">{t('networkInterfaces.recvRate')}</th>
+              <th className="text-right pb-2 pr-3">{t('networkInterfaces.sentRate')}</th>
+              <th className="text-right pb-2 pr-3">{t('networkInterfaces.totalRecv')}</th>
+              <th className="text-right pb-2 pr-3">{t('networkInterfaces.totalSent')}</th>
             </tr>
           </thead>
           <tbody>
             {nets.map((n) => (
               <tr key={n.interface} className="border-b border-border-base last:border-0">
-                <td className="py-1.5 pr-4 text-accent-blue">{n.interface}</td>
-                <td className="py-1.5 pr-4 text-right text-accent-green">{formatBps(n.recv_bps)}</td>
-                <td className="py-1.5 pr-4 text-right text-accent-red">{formatBps(n.sent_bps)}</td>
-                <td className="py-1.5 pr-4 text-right text-text-secondary">{formatBytes(n.total_recv)}</td>
-                <td className="py-1.5 pr-4 text-right text-text-secondary">{formatBytes(n.total_sent)}</td>
+                <td className="py-1 pr-3 text-accent-blue">{n.interface}</td>
+                <td className="py-1 pr-3 text-right text-accent-green">{formatBps(n.recv_bps)}</td>
+                <td className="py-1 pr-3 text-right text-accent-red">{formatBps(n.sent_bps)}</td>
+                <td className="py-1 pr-3 text-right text-text-secondary">{formatBytes(n.total_recv)}</td>
+                <td className="py-1 pr-3 text-right text-text-secondary">{formatBytes(n.total_sent)}</td>
               </tr>
             ))}
           </tbody>

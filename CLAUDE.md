@@ -5,7 +5,7 @@ It gives AI agents the context needed to work on this codebase without re-readin
 
 ## What this project is
 
-A single-binary Go web application that monitors Linux VPS resources (CPU, RAM, Swap, Disk, Network) and includes an `ncdu`-powered Storage Analyzer. All web assets are embedded in the binary via `//go:embed`. Protected by HTTP Basic Auth. No config files, no database, no external runtime dependencies.
+A single-binary Go web application that monitors Linux VPS resources (CPU, RAM, Swap, Disk, Network) and includes an `ncdu`-powered Storage Analyzer. All web assets are embedded in the binary via `//go:embed`. Uses session auth + SQLite users when `--auth=true`; otherwise runs in public mode. No external services or runtime dependencies.
 
 ## Build & run
 
@@ -15,7 +15,7 @@ make linux                       # cross-compile → quickvps-linux (amd64)
 make linux-arm64                 # cross-compile → quickvps-linux-arm64
 make frontend                    # build React frontend → web/
 make build-full                  # make frontend + make linux
-./quickvps --password=dev        # run locally
+./quickvps --auth=true --password=dev        # run locally
 ```
 
 Always verify `make linux` still compiles after any change — Linux is the primary deployment target.
@@ -23,7 +23,7 @@ Always verify `make linux` still compiles after any change — Linux is the prim
 For UI development, use the Vite dev server (no recompile needed):
 ```bash
 # Terminal 1
-./quickvps --password=dev
+./quickvps --auth=true --password=dev
 # Terminal 2
 cd frontend && npm run dev       # → http://localhost:5173 with HMR
 ```
@@ -44,7 +44,7 @@ internal/ncdu/runner.go                    # background ncdu subprocess, cancel,
 internal/ncdu/parser.go                    # recursive ncdu JSON → DirEntry tree
 internal/ws/hub.go                         # WebSocket hub: register/unregister/broadcast
 internal/ws/client.go                      # WebSocket client: read/write pumps, ping-pong
-internal/server/server.go                  # HTTP mux, basicAuthMiddleware, loggingMiddleware
+internal/server/server.go                  # HTTP mux, sessionAuthMiddleware, loggingMiddleware
 internal/server/handlers.go                # all REST + WebSocket handlers
 web/                                       # Go embed target — DO NOT edit directly; built by Vite
 frontend/src/types/metrics.ts              # TypeScript mirrors of Go metric structs
@@ -58,9 +58,9 @@ frontend/src/lib/thresholdColor.ts         # getThresholdColor / getThresholdHex
 frontend/src/lib/formatBytes.ts            # formatBytes(n) → "1.2 MB"
 frontend/src/components/charts/HalfGauge.tsx        # Chart.js half-ring gauge
 frontend/src/components/charts/RollingLineChart.tsx  # 60-point rolling line
-frontend/src/components/metrics/CpuSection.tsx       # CPU card
-frontend/src/components/metrics/MemorySection.tsx    # Memory card
-frontend/src/components/metrics/SwapSection.tsx      # Swap card
+frontend/src/components/metrics/CpuCard.tsx          # CPU gauge + history + per-core bars
+frontend/src/components/metrics/MemorySwapCard.tsx   # Memory/Swap split card + histories
+frontend/src/components/metrics/ServerInfoCard.tsx   # Host, IP, DNS, uptime, version
 frontend/src/components/metrics/NetworkSection.tsx   # Network chart
 frontend/src/components/metrics/NetworkTable.tsx     # Interface table
 frontend/src/components/metrics/DiskSection.tsx      # Disk cards grid
@@ -75,7 +75,7 @@ frontend/vite.config.ts                              # outDir: ../web, proxy to 
 
 ## Architecture in one paragraph
 
-`main.go` starts three goroutines: `collector.Run` (ticks every 2s, collects metrics, fans out to subscribers), `hub.Run` (WebSocket hub event loop), and a bridge goroutine that reads from the collector's subscription channel and calls `hub.Broadcast`. The HTTP server (stdlib `net/http`) handles REST endpoints and upgrades `/ws` connections. All web assets live in `web/` and are embedded at compile time. There are no external services, no databases, no configuration files.
+`main.go` starts three goroutines: `collector.Run` (ticks every 2s, collects metrics, fans out to subscribers), `hub.Run` (WebSocket hub event loop), and a bridge goroutine that reads from the collector's subscription channel and calls `hub.Broadcast`. The HTTP server (stdlib `net/http`) handles REST endpoints and upgrades `/ws` connections. All web assets live in `web/` and are embedded at compile time. There are no external services or configuration files. SQLite is used locally only when auth mode is enabled.
 
 ## Data flow
 
@@ -102,18 +102,31 @@ POST /api/ncdu/scan → runner.Start(path)
 |----------|--------------------|----------------------|
 | GET      | `/`                | static file server   |
 | GET      | `/api/info`        | handleInfo           |
+| POST     | `/api/auth/login`  | handleAuthLogin      |
+| POST     | `/api/auth/logout` | handleAuthLogout     |
+| GET      | `/api/auth/me`     | handleAuthMe         |
+| GET/POST | `/api/users`       | handleUsers          |
+| PUT/DELETE | `/api/users/:id` | handleUserByID       |
+| GET      | `/api/audit/users` | handleUserAudit      |
 | GET/PUT  | `/api/interval`    | handleInterval       |
 | GET      | `/api/metrics`     | handleMetrics        |
+| GET      | `/api/ports`       | handlePorts          |
+| DELETE   | `/api/ports/:port` | handlePortByID       |
 | POST     | `/api/ncdu/scan`   | handleNcduScan       |
 | DELETE   | `/api/ncdu/scan`   | handleNcduScan       |
 | GET/PUT  | `/api/ncdu/cache`  | handleNcduCache      |
 | GET      | `/api/ncdu/status` | handleNcduStatus     |
 | GET      | `/ws`              | handleWS             |
 
+`GET /api/info` includes:
+- `hostname`, `os`, `arch`, `uptime`
+- `auth_enabled`, `interval_ms`, `ncdu_cache_ttl_sec`
+- `local_ip`, `public_ip`, `dns_servers`, `version`
+
 ## Key invariants — do not break these
 
 - **Single binary**: every asset must be embedded; do not read files from disk at runtime.
-- **No external services**: the binary is the only process required (besides ncdu which it installs).
+- **No external services**: the binary is the only required service process (besides ncdu which it installs). In auth mode, it uses a local SQLite file.
 - **Thread safety**: `Collector` and `Runner` use `sync.RWMutex`. Any new shared state must be protected.
 - **Context cancellation**: all goroutines must respect `ctx.Done()` for clean shutdown.
 - **Delta rates**: disk I/O and network bps are *rates* computed from successive counter deltas, not raw cumulative values. The previous counters are stored in `Collector.prevDiskIO` and `Collector.prevNet`.
@@ -191,6 +204,7 @@ See `docs/TESTING.md` for the full testing guide including frontend manual check
 Go:
 - `github.com/gorilla/websocket v1.5.1` — WebSocket
 - `github.com/shirou/gopsutil/v3 v3.24.1` — system metrics
+- `modernc.org/sqlite` — embedded SQLite driver for auth/users/audit
 
 Frontend (see `frontend/package.json`):
 - `react` + `react-dom` v18, `react-router-dom` v6
@@ -213,7 +227,7 @@ Do not add new npm dependencies without updating `README.md` and this file.
 `README.md` is the public face of this project on GitHub. Keep it in sync with any change that affects:
 
 - **API endpoints** — mirror the table in `CLAUDE.md` → `README.md`
-- **Flags / CLI options** — `--addr`, `--user`, `--password`, `--interval`
+- **Flags / CLI options** — `--addr`, `--auth`, `--db`, `--user`, `--password`, `--interval`
 - **Build targets** — new `make` targets or cross-compile targets
 - **Features** — new metrics, new UI sections, new behaviors
 - **Dependencies** — added/removed Go modules

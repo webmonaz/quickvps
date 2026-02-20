@@ -145,16 +145,16 @@ func TestHandleNcduScan_InvalidMethod(t *testing.T) {
     // PUT → expect 405
 }
 
-func TestBasicAuth_MissingCredentials(t *testing.T) {
-    // No Authorization header → expect 401 with WWW-Authenticate header
+func TestHandleAuthLoginLogoutAndMeViaMiddleware(t *testing.T) {
+    // Login -> session cookie -> /api/auth/me 200 -> logout -> /api/auth/me 401
 }
 
-func TestBasicAuth_WrongPassword(t *testing.T) {
-    // Wrong password → expect 401
+func TestRequireAdminGuards(t *testing.T) {
+    // viewer cannot access /api/users and /api/audit/users
 }
 
-func TestBasicAuth_Correct(t *testing.T) {
-    // Correct credentials → expect handler to run
+func TestHandleInfoIncludesExtendedFields(t *testing.T) {
+    // /api/info includes local_ip, public_ip, dns_servers, version
 }
 ```
 
@@ -213,16 +213,16 @@ make linux
 
 # Copy to test server
 scp quickvps-linux user@test-vps:/tmp/quickvps-test
-ssh user@test-vps "chmod +x /tmp/quickvps-test && /tmp/quickvps-test --password=test &"
+ssh user@test-vps "chmod +x /tmp/quickvps-test && /tmp/quickvps-test --auth=true --password=test &"
 ```
 
 ### Startup
 
 - [ ] Binary starts without errors
-- [ ] `WARNING: No password set` is printed when `--password` is omitted
-- [ ] Browser shows the login dialog when `--password` is set
-- [ ] Wrong password returns HTTP 401
-- [ ] `/api/info` returns `{"hostname":..., "os":"linux", "arch":..., "uptime":"..."}` with a real uptime string (not "unknown")
+- [ ] With `--auth=true`, browser shows login and wrong password fails
+- [ ] With `--auth=false`, dashboard is publicly accessible (no login)
+- [ ] If `--auth=true` and password omitted, startup logs bootstrap credential warning
+- [ ] `/api/info` includes base fields (`hostname`,`os`,`arch`,`uptime`) and extended fields (`auth_enabled`,`interval_ms`,`ncdu_cache_ttl_sec`,`local_ip`,`public_ip`,`dns_servers`,`version`)
 
 ### Dashboard — Metrics
 
@@ -290,17 +290,17 @@ npm run lint     # ESLint with react-hooks/exhaustive-deps: error
 
 Both must pass before opening a PR that touches `frontend/`.
 
-### Unit tests (Phase 5 — planned)
+### Unit tests (Vitest)
 
-When Vitest is added, cover:
+Current baseline coverage includes formatter/threshold helpers and selector logic for system resource cards. Continue adding:
 
 - `src/lib/formatBytes.ts` — boundary values (0, 1023, 1024, 1024³)
 - `src/lib/thresholdColor.ts` — boundary values (59, 60, 84, 85)
 - `src/store/index.ts` — `setSnapshot` correctly pushes to history arrays
 
-### Component tests (Phase 5 — planned)
+### Component tests (incremental target)
 
-React Testing Library will cover:
+Prefer adding React Testing Library coverage for:
 
 - `ProgressBar` — renders correct width and color class for each threshold zone
 - `HalfGauge` — canvas is mounted; Chart.js `update` is called with new data on re-render
@@ -319,18 +319,18 @@ Before merging any `frontend/` change, verify in the browser (use `npm run dev` 
 - [ ] NcduTree: top 2 levels pre-expanded; deeper levels expand on click (lazy render)
 - [ ] WebSocket disconnect → red banner appears within 3 s
 - [ ] WebSocket reconnect → banner disappears, metrics resume
-- [ ] Header shows hostname and OS from `/api/info`
+- [ ] Server Info card shows hostname, OS/arch, uptime, local/public IP, DNS, and version from `/api/info`
 
 ---
 
 ## CI (future)
 
-When a CI pipeline is added (Phase 5), the minimum required checks are:
+When a CI pipeline is added, the minimum required checks are:
 
 ```yaml
 - go vet ./...
 - go test -race ./...
-- cd frontend && npm ci && npm run build && npm run lint
+- cd frontend && npm ci && npm run build && npm run lint && npm test
 - GOOS=linux GOARCH=amd64 go build -o /dev/null .
 - GOOS=linux GOARCH=arm64 go build -o /dev/null .
 ```

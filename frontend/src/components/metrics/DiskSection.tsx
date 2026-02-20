@@ -22,9 +22,9 @@ export const DiskSection = memo(function DiskSection() {
       <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">
         {t('disk.title')}
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-24 bg-bg-card border border-border-base rounded-card" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {[0, 1].map((i) => (
+          <div key={i} className="h-28 bg-bg-card border border-border-base rounded-card" />
         ))}
       </div>
     </div>
@@ -35,7 +35,7 @@ export const DiskSection = memo(function DiskSection() {
       <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">
         {t('disk.title')}
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {disks.map((disk) => (
           <DiskCard key={disk.mountpoint} disk={disk} io={findIO(disk)} />
         ))}

@@ -12,6 +12,9 @@ interface MetricsState {
   snapshot: Snapshot | null
   netHistory: [number[], number[]]
   diskIOHistory: [number[], number[]]
+  cpuHistory: number[]
+  memHistory: number[]
+  swapHistory: number[]
 }
 
 interface NcduState {
@@ -104,6 +107,9 @@ export const useStore = create<AppState>()(
       snapshot: null,
       netHistory: [Array(HISTORY_LENGTH).fill(0), Array(HISTORY_LENGTH).fill(0)],
       diskIOHistory: [Array(HISTORY_LENGTH).fill(0), Array(HISTORY_LENGTH).fill(0)],
+      cpuHistory: Array(HISTORY_LENGTH).fill(0),
+      memHistory: Array(HISTORY_LENGTH).fill(0),
+      swapHistory: Array(HISTORY_LENGTH).fill(0),
       scanPath: (localStorage.getItem('defaultScanPath')) ?? '/',
       scanResult: null,
       isScanning: false,
@@ -152,6 +158,11 @@ export const useStore = create<AppState>()(
             pushHistory(state.diskIOHistory[0], totalRead),
             pushHistory(state.diskIOHistory[1], totalWrite),
           ]
+
+          // Update CPU / memory / swap percent histories
+          state.cpuHistory  = pushHistory(state.cpuHistory,  snapshot.cpu?.total_percent ?? 0)
+          state.memHistory  = pushHistory(state.memHistory,  snapshot.memory?.percent    ?? 0)
+          state.swapHistory = pushHistory(state.swapHistory, snapshot.swap?.percent      ?? 0)
         }),
 
       setScanPath:   (path)   => set((s) => { s.scanPath = path }),

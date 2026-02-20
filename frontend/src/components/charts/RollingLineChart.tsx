@@ -10,16 +10,18 @@ interface Dataset {
 
 interface RollingLineChartProps {
   datasets: Dataset[]
+  yFormat?: 'bytes/s' | 'percent'
 }
 
 function areEqual(prev: RollingLineChartProps, next: RollingLineChartProps): boolean {
+  if (prev.yFormat !== next.yFormat) return false
   if (prev.datasets.length !== next.datasets.length) return false
   return prev.datasets.every((d, i) => d.data === next.datasets[i].data)
 }
 
 const EMPTY_LABELS = Array(CHART_POINTS).fill('')
 
-export const RollingLineChart = memo(function RollingLineChart({ datasets }: RollingLineChartProps) {
+export const RollingLineChart = memo(function RollingLineChart({ datasets, yFormat = 'bytes/s' }: RollingLineChartProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const chartRef  = useRef<Chart | null>(null)
 
@@ -51,6 +53,8 @@ export const RollingLineChart = memo(function RollingLineChart({ datasets }: Rol
           x: { display: false },
           y: {
             display: true,
+            min: yFormat === 'percent' ? 0   : undefined,
+            max: yFormat === 'percent' ? 100 : undefined,
             grid:    { color: '#2a2d3e' },
             ticks: {
               color:         '#8892a4',
@@ -59,7 +63,7 @@ export const RollingLineChart = memo(function RollingLineChart({ datasets }: Rol
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               callback: (val: any) => {
                 const n = typeof val === 'number' ? val : parseFloat(val)
-                return fmtBytes(n) + '/s'
+                return yFormat === 'percent' ? n.toFixed(0) + '%' : fmtBytes(n) + '/s'
               },
             },
           },

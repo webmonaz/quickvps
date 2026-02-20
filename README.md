@@ -14,6 +14,7 @@ A single-binary Go web application that runs on any Linux VPS to monitor system 
 - **Storage Analyzer** — runs `ncdu` in the background, renders a collapsible directory tree in the browser. Reuses recent same-path scan results (TTL configurable in Settings in seconds, default 600 seconds) to reduce server load. Auto-installs `ncdu` if absent (supports apt, yum, pacman)
 - **Port Scanning + kill by port** — inspect listening TCP/UDP ports and terminate processes bound to a selected port
 - **Session Auth + SQLite users** — bootstrap admin from flags, then sign in via UI session cookie
+- **Server info card** — hostname, OS/arch, uptime, local/public IP, DNS resolvers, app version
 - **Dark theme** — single dark UI with CSS variables, responsive down to mobile
 - **Single binary** — all web assets are embedded via `//go:embed`; just `scp` and run
 
@@ -25,7 +26,7 @@ A single-binary Go web application that runs on any Linux VPS to monitor system 
 # Linux amd64
 curl -Lo quickvps https://github.com/webmonaz/quickvps/releases/latest/download/quickvps-linux
 chmod +x quickvps
-./quickvps --password=secret
+./quickvps --auth=true --password=secret
 ```
 
 Open `http://your-server:8080` and sign in with `admin` / `secret`.
@@ -50,7 +51,7 @@ Vite dev server proxies `/api` and `/ws` to the Go backend at `:8080`.
 
 ```bash
 # Terminal 1 — run Go backend
-./quickvps --password=dev
+./quickvps --auth=true --password=dev
 
 # Terminal 2 — run Vite dev server with HMR
 cd frontend
@@ -90,7 +91,11 @@ Environment variables as fallback (flags take precedence):
 | `QUICKVPS_USER`     | `--user`     |
 | `QUICKVPS_PASSWORD` | `--password` |
 
-If `--password` is empty, authentication is **disabled** and a warning is logged.
+Auth behavior:
+
+- `--auth=false` (default): authentication is disabled (public access).
+- `--auth=true`: session authentication and user management are enabled.
+- If `--auth=true` and `--password` is empty, QuickVPS bootstraps `admin/admin123` on first run and logs a warning.
 
 ## Deploy with systemd
 
@@ -117,12 +122,12 @@ bash scripts/install.sh quickvps-linux
 
 ## API Reference
 
-All API and WebSocket endpoints require a valid session cookie when `--password` is set.
+When `--auth=true`, API and WebSocket endpoints (except `/api/auth/login`) require a valid session cookie.
 
 | Method   | Path               | Description                              |
 |----------|--------------------|------------------------------------------|
 | `GET`    | `/`                | Dashboard HTML (embedded)                |
-| `GET`    | `/api/info`        | Hostname, OS, arch, uptime               |
+| `GET`    | `/api/info`        | Host/system info + auth/cache/app metadata |
 | `POST`   | `/api/auth/login`  | Login `{"username":"admin","password":"..."}` |
 | `POST`   | `/api/auth/logout` | Logout current session                    |
 | `GET`    | `/api/auth/me`     | Current authenticated user                |
@@ -130,6 +135,7 @@ All API and WebSocket endpoints require a valid session cookie when `--password`
 | `POST`   | `/api/users`       | Create user (admin)                       |
 | `PUT`    | `/api/users/:id`   | Update role/password (admin)              |
 | `DELETE` | `/api/users/:id`   | Delete user (admin)                       |
+| `GET`    | `/api/audit/users` | User audit trail (admin, optional `?limit=`) |
 | `GET`    | `/api/interval`    | Current metrics interval                 |
 | `PUT`    | `/api/interval`    | Update interval `{"interval_ms":2000}` |
 | `GET`    | `/api/metrics`     | Current snapshot (one-shot JSON)         |
@@ -153,6 +159,12 @@ WebSocket message shape:
 ```
 
 When `ncdu_ready` is `true`, the UI automatically fetches `/api/ncdu/status`.
+
+`GET /api/info` returns:
+
+- `hostname`, `os`, `arch`, `uptime`
+- `auth_enabled`, `interval_ms`, `ncdu_cache_ttl_sec`
+- `local_ip`, `public_ip`, `dns_servers`, `version`
 
 ## Project Structure
 

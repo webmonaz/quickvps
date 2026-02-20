@@ -26,8 +26,22 @@
     "totalRecv": "Tổng nhận",
     "totalSent": "Tổng gửi"
   },
+  "system": {
+    "resources": "Tài nguyên hệ thống"
+  },
+  "serverInfo": {
+    "title": "Thông tin máy chủ",
+    "publicIp": "IP công khai",
+    "localIp": "IP nội bộ",
+    "dns": "DNS",
+    "version": "Phiên bản",
+    "hostname": "Tên máy chủ",
+    "os": "Hệ điều hành",
+    "arch": "Kiến trúc",
+    "uptime": "Thời gian hoạt động"
+  },
   "disk": {
-    "title": "Lưu trữ",
+    "title": "Lưu trữ hệ thống",
     "used": "Đã dùng",
     "free": "Trống",
     "total": "Tổng"
@@ -64,7 +78,7 @@
   },
   "nav": {
     "dashboard": "Bảng điều khiển",
-    "storage": "Lưu trữ",
+    "storage": "Bộ phân tích lưu trữ",
     "ports": "Cổng",
     "settings": "Cài đặt",
     "admin": "Quản trị"

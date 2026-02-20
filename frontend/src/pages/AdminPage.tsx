@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Card } from '@/components/ui/Card'
 import { CardTitle } from '@/components/ui/CardTitle'
@@ -34,7 +34,7 @@ export default function AdminPage() {
     }))
   }
 
-  function resetEditors(nextUsers: AuthUser[]) {
+  const resetEditors = useCallback((nextUsers: AuthUser[]) => {
     setEditors((prev) => {
       const next: Record<number, UserEditor> = {}
       for (const user of nextUsers) {
@@ -46,9 +46,9 @@ export default function AdminPage() {
       }
       return next
     })
-  }
+  }, [])
 
-  async function loadUsers() {
+  const loadUsers = useCallback(async () => {
     const res = await fetch('/api/users')
     if (!res.ok) {
       throw new Error('failed')
@@ -57,16 +57,16 @@ export default function AdminPage() {
     const nextUsers = data.users ?? []
     setUsers(nextUsers)
     resetEditors(nextUsers)
-  }
+  }, [resetEditors])
 
-  async function loadAudits() {
+  const loadAudits = useCallback(async () => {
     const res = await fetch('/api/audit/users?limit=50')
     if (!res.ok) {
       throw new Error('failed')
     }
     const data = await res.json() as { entries?: UserAuditEntry[] }
     setAudits(data.entries ?? [])
-  }
+  }, [])
 
   useEffect(() => {
     if (authUser?.role !== 'admin') return
@@ -76,7 +76,7 @@ export default function AdminPage() {
         setError(t('admin.loadError'))
       }
     })
-  }, [authUser?.role, t])
+  }, [authUser?.role, loadAudits, loadUsers, t])
 
   async function handleCreateUser() {
     if (busy) return

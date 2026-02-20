@@ -1,0 +1,4 @@
+interface:
+  display_name: "QuickVPS Design Guard"
+  short_description: "Audit key frontend convention violations"
+  default_prompt: "Run QuickVPS frontend design guard checks and summarize issues with file/line pointers."

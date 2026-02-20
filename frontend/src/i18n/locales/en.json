@@ -26,8 +26,22 @@
     "totalRecv": "Total Recv",
     "totalSent": "Total Sent"
   },
+  "system": {
+    "resources": "System Resources"
+  },
+  "serverInfo": {
+    "title": "Server Info",
+    "publicIp": "Public IP",
+    "localIp": "Local IP",
+    "dns": "DNS",
+    "version": "Version",
+    "hostname": "Hostname",
+    "os": "OS",
+    "arch": "Arch",
+    "uptime": "Uptime"
+  },
   "disk": {
-    "title": "Storage",
+    "title": "System Storage",
     "used": "Used",
     "free": "Free",
     "total": "Total"
@@ -64,7 +78,7 @@
   },
   "nav": {
     "dashboard": "Dashboard",
-    "storage": "Storage",
+    "storage": "Storage Analyzer",
     "ports": "Ports",
     "settings": "Settings",
     "admin": "Admin"

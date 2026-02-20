@@ -1,0 +1,4 @@
+interface:
+  display_name: "QuickVPS Preflight Gate"
+  short_description: "Run full pre-PR validation checks"
+  default_prompt: "Run the QuickVPS preflight gate and summarize each step with PASS/FAIL."

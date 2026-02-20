@@ -2,7 +2,7 @@
 
 ## Overview
 
-QuickVPS is structured as a single Go process with three concurrent subsystems wired together in `main.go`. There are no databases, no message queues, and no external services.
+QuickVPS is structured as a single Go process with three concurrent subsystems wired together in `main.go`. There are no external services or message queues. When `--auth=true`, QuickVPS uses a local SQLite database file for users/audit logs.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -18,7 +18,7 @@ QuickVPS is structured as a single Go process with three concurrent subsystems w
 │   │                    HTTP Server                        │      │
 │   │                                                       │      │
 │   │  GET /api/metrics ──▶ collector.Latest()             │      │
-│   │  GET /api/info    ──▶ os/runtime                     │      │
+│   │  GET /api/info    ──▶ os/runtime + network metadata  │      │
 │   │  POST /api/ncdu/* ──▶ Runner                         │      │
 │   │  GET  /ws         ──▶ ws.Client ◀──── hub.Broadcast  │      │
 │   │  GET  /           ──▶ embedded web/                  │      │
@@ -135,13 +135,19 @@ A client's `send` channel has a buffer of 64 messages. If the client is slow and
 
 **Responsibility:** Route requests, enforce authentication, wire handlers to subsystems.
 
+Key route groups:
+- Auth/session: `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`
+- User admin/audit: `/api/users`, `/api/users/:id`, `/api/audit/users`
+- Metrics/system: `/api/info`, `/api/interval`, `/api/metrics`
+- Operations: `/api/ports`, `/api/ports/:port`, `/api/ncdu/*`, `/ws`
+
 #### Middleware chain (outermost → innermost)
 
 ```
-basicAuthMiddleware → loggingMiddleware → mux
+sessionAuthMiddleware → loggingMiddleware → mux
 ```
 
-Auth middleware is only applied when `--password` is non-empty. If disabled, a warning is logged at startup. The middleware uses stdlib `r.BasicAuth()` — credentials are validated with a simple string comparison (no constant-time comparison, since this is a single-user tool on a trusted network).
+Auth middleware is applied only when `--auth=true`. Public paths are the SPA/static routes and `/api/auth/login`; all other API routes require a valid session cookie. Sessions are in-memory (`internal/auth/session.go`) and users/audits are persisted in SQLite (`internal/auth/store.go`).
 
 #### Static files
 
@@ -155,17 +161,17 @@ React 18 + TypeScript + TailwindCSS single-page application built with Vite. Sou
 
 Key layers:
 
-- **`src/store/index.ts`** — Zustand store (Immer + subscribeWithSelector). Holds the latest `Snapshot`, 60-point rolling history arrays for network and disk I/O, ncdu scan state, and connection status.
+- **`src/store/index.ts`** — Zustand store (Immer + subscribeWithSelector). Holds the latest `Snapshot`, 60-point rolling history arrays for network, disk I/O, CPU%, memory%, and swap%, ncdu scan state, and connection status.
 - **`src/hooks/useWebSocket.ts`** — opens the WS connection, dispatches `setSnapshot` on every message, calls `onNcduReady` callback when `ncdu_ready: true` arrives, auto-reconnects after 3 s.
 - **`src/hooks/useServerInfo.ts`** — fetches `/api/info` once on mount.
 - **`src/components/charts/`** — `HalfGauge` and `RollingLineChart` hold Chart.js instances in `useRef`. Updates are imperative mutations (`chart.data.datasets[0].data = [...]; chart.update('none')`); the canvas DOM node never re-renders.
-- **`src/components/metrics/`** — each section selects only the fields it needs from the store via narrow Zustand selectors to prevent unnecessary re-renders on each 2 s push.
+- **`src/components/metrics/`** — `CpuCard`, `MemorySwapCard`, `ServerInfoCard`, and other metric sections select only the fields they need from the store via narrow Zustand selectors to prevent unnecessary re-renders on each 2 s push.
 
-All dashboard updates are driven by WS messages; the REST endpoints are only used for initial page load (`/api/info`) and ncdu result fetch (`/api/ncdu/status`).
+Dashboard metrics updates are driven by WS messages; REST endpoints are used for initial server metadata load (`/api/info`), auth/admin workflows, and ncdu result fetch (`/api/ncdu/status`).
 
 **Dev workflow:**
 ```
-Terminal 1: ./quickvps --password=dev        # Go backend on :8080
+Terminal 1: ./quickvps --auth=true --password=dev  # Go backend on :8080
 Terminal 2: cd frontend && npm run dev       # Vite HMR on :5173
 ```
 Vite proxies `/api` and `/ws` to `:8080`, so the dev server is a full live preview.
@@ -228,7 +234,7 @@ The result is that browser requests for `/css/style.css` serve `web/css/style.cs
 
 ```
 1. Parse flags / env vars
-2. Log warnings (no password, etc.)
+2. Resolve auth mode (`--auth`) and bootstrap credentials (default `admin123` when auth enabled without password)
 3. metrics.NewCollector(interval)
      └── cpu.Percent(200ms)   ← blocking warm-up
      └── collectDiskIO()      ← capture initial counters

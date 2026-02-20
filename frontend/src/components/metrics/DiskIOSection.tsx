@@ -24,7 +24,7 @@ export const DiskIOSection = memo(function DiskIOSection() {
           <span><span className="text-accent-purple">—</span> {t('diskIO.write')}</span>
         </div>
       </div>
-      <div className="h-36">
+      <div className="h-28">
         <RollingLineChart datasets={datasets} />
       </div>
     </Card>
