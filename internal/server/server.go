@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"quickvps/internal/alerts"
 	"quickvps/internal/auth"
 	"quickvps/internal/metrics"
 	"quickvps/internal/ncdu"
@@ -26,6 +27,7 @@ type Server struct {
 	collector    *metrics.Collector
 	hub          *ws.Hub
 	runner       *ncdu.Runner
+	alerts       *alerts.Service
 	authDisabled bool
 	authStore    *auth.Store
 	sessions     *auth.SessionManager
@@ -36,6 +38,7 @@ func New(
 	collector *metrics.Collector,
 	hub *ws.Hub,
 	runner *ncdu.Runner,
+	alertsService *alerts.Service,
 	authDisabled bool,
 	authStore *auth.Store,
 	sessions *auth.SessionManager,
@@ -46,6 +49,7 @@ func New(
 		collector:    collector,
 		hub:          hub,
 		runner:       runner,
+		alerts:       alertsService,
 		authDisabled: authDisabled,
 		authStore:    authStore,
 		sessions:     sessions,
@@ -78,6 +82,16 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/api/ncdu/scan", s.handleNcduScan)
 	s.mux.HandleFunc("/api/ncdu/cache", s.handleNcduCache)
 	s.mux.HandleFunc("/api/ncdu/status", s.handleNcduStatus)
+	s.mux.HandleFunc("/api/alerts/config", s.handleAlertsConfig)
+	s.mux.HandleFunc("/api/alerts/status", s.handleAlertsStatus)
+	s.mux.HandleFunc("/api/alerts/history", s.handleAlertsHistory)
+	s.mux.HandleFunc("/api/alerts/test", s.handleAlertsTest)
+	s.mux.HandleFunc("/api/alerts/silence", s.handleAlertsSilence)
+	s.mux.HandleFunc("/api/firewall/status", s.handleFirewallStatus)
+	s.mux.HandleFunc("/api/firewall/rules", s.handleFirewallRules)
+	s.mux.HandleFunc("/api/firewall/exposures", s.handleFirewallExposures)
+	s.mux.HandleFunc("/api/packages/inventory", s.handlePackagesInventory)
+	s.mux.HandleFunc("/api/packages/updates", s.handlePackagesUpdates)
 	s.mux.Handle("/", spaHandler(webSub, fileServer))
 }
 
