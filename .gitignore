@@ -33,6 +33,14 @@ coverage.out
 .env
 .env.*
 
+# Local SQLite runtime data (contains sessions / alert secrets / audit)
+quickvps.db
+quickvps.db-shm
+quickvps.db-wal
+quickvps.db.backup-*
+*.db-shm
+*.db-wal
+
 # Screenshots added to docs (tracked separately if needed)
 docs/screenshot.png
 

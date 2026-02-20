@@ -2,7 +2,7 @@
 
 ## Overview
 
-QuickVPS is structured as a single Go process with three concurrent subsystems wired together in `main.go`. There are no external services or message queues. When `--auth=true`, QuickVPS uses a local SQLite database file for users/audit logs.
+QuickVPS is structured as a single Go process with concurrent subsystems wired together in `main.go`. There are no external services or message queues. SQLite is used locally for auth/session data and alert configuration/history.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -20,6 +20,7 @@ QuickVPS is structured as a single Go process with three concurrent subsystems w
 │   │  GET /api/metrics ──▶ collector.Latest()             │      │
 │   │  GET /api/info    ──▶ os/runtime + network metadata  │      │
 │   │  POST /api/ncdu/* ──▶ Runner                         │      │
+│   │  GET/PUT /api/alerts/* ──▶ AlertService              │      │
 │   │  GET  /ws         ──▶ ws.Client ◀──── hub.Broadcast  │      │
 │   │  GET  /           ──▶ embedded web/                  │      │
 │   └──────────────────────────────────────────────────────┘      │
@@ -115,6 +116,61 @@ Reads `/etc/os-release` and matches `ID` or `ID_LIKE` to choose the package mana
 
 ---
 
+### `internal/alerts` — CPU Health Alerts
+
+**Responsibility:** Evaluate long-running CPU overload rules and dispatch notifications via Telegram/Gmail.
+
+Core pieces:
+
+- `evaluator.go`: stateful warning/critical/recovery transitions with cooldown
+- `notifier.go`: Telegram Bot API + Gmail SMTP sender with retry/backoff
+- `store.go`: SQLite tables (`alert_settings`, `alert_secrets`, `alert_events`, `alert_silence`)
+- `crypto.go`: AES-256-GCM encryption for stored secrets using `QUICKVPS_ALERTS_KEY`
+- `service.go`: runtime coordinator (load config, consume snapshots, persist events, mute window, history cleanup)
+
+Flow:
+
+```
+metrics snapshot -> AlertService.EvaluateSnapshot()
+                -> Evaluator trigger? (warning/critical/recovery)
+                -> Notifier.Notify() [telegram/email + retries]
+                -> save alert_events
+```
+
+`/api/alerts/*` endpoints expose config/status/history/test/mute controls.
+
+---
+
+### `internal/firewall` — Firewall Audit (read-only)
+
+Auto-detects backend priority: `ufw` -> `nft` -> `iptables`.
+
+Linux-only: handlers return `501 Not Implemented` on non-Linux hosts.
+
+Provides:
+
+- status summary (`enabled`, `default policy`)
+- inbound rules parse
+- exposures derived from firewall rules + active listeners (`internal/ports`)
+- risk scoring policy configurable by env:
+  - `QUICKVPS_FW_HIGH_RISK_PORTS`
+  - `QUICKVPS_FW_MEDIUM_RISK_PORTS`
+
+No rule mutation in this phase.
+
+---
+
+### `internal/packages` — Package Audit (read-only)
+
+Detects package manager and returns:
+
+- installed inventory (APT / DNF-YUM / Pacman)
+- available updates (`apt list --upgradable`, `dnf|yum check-update`, `pacman -Qu`)
+
+No package install/upgrade in this phase.
+
+---
+
 ### `internal/ws` — WebSocket Hub
 
 **Responsibility:** Manage connected browser clients and broadcast messages to all of them.
@@ -139,7 +195,7 @@ Key route groups:
 - Auth/session: `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`
 - User admin/audit: `/api/users`, `/api/users/:id`, `/api/audit/users`
 - Metrics/system: `/api/info`, `/api/interval`, `/api/metrics`
-- Operations: `/api/ports`, `/api/ports/:port`, `/api/ncdu/*`, `/ws`
+- Operations: `/api/ports`, `/api/ports/:port`, `/api/ncdu/*`, `/api/alerts/*`, `/api/firewall/*`, `/api/packages/*`, `/ws`
 
 #### Middleware chain (outermost → innermost)
 
@@ -190,7 +246,8 @@ Emits hashed bundles to `web/assets/` and `web/index.html`, then `make linux` em
 goroutine 1: collector.Run(ctx)       — ticker, collects, fans out
 goroutine 2: hub.Run(ctx)             — serializes WS client registration
 goroutine 3: bridge                   — collector.Subscribe() → hub.Broadcast()
-goroutine 4: httpServer               — stdlib HTTP (internally spawns per-request goroutines)
+goroutine 4: alertService.Run(ctx)    — collector.Subscribe() → evaluate → notify
+goroutine 5: httpServer               — stdlib HTTP (internally spawns per-request goroutines)
 goroutine N: ws.Client.readPump()     — one per connected browser
 goroutine N: ws.Client.writePump()    — one per connected browser
 goroutine M: ncdu.Runner.run()        — one at a time, when a scan is running
@@ -241,13 +298,15 @@ The result is that browser requests for `/css/style.css` serve `web/css/style.cs
      └── collectNet()         ← capture initial counters
 4. ws.NewHub()
 5. ncdu.NewRunner()
-6. go collector.Run(ctx)
-7. go hub.Run(ctx)
-8. go bridge goroutine
-9. server.New(...)            ← register routes
-10. go httpServer.ListenAndServe()
-11. block on ctx.Done()
-12. graceful HTTP shutdown (5s timeout)
+6. alerts.NewStore(dbPath) + alerts.NewService(...)
+7. go collector.Run(ctx)
+8. go hub.Run(ctx)
+9. go alertService.Run(ctx, collector.Subscribe())
+10. go bridge goroutine
+11. server.New(...)            ← register routes
+12. go httpServer.ListenAndServe()
+13. block on ctx.Done()
+14. graceful HTTP shutdown (5s timeout)
 ```
 
 ---
@@ -256,5 +315,6 @@ The result is that browser requests for `/css/style.css` serve `web/css/style.cs
 
 - Metric collection errors are silently swallowed and result in zero/empty values in the snapshot. A failed `disk.Partitions()` call means the `disks` array is empty — no crash, no alert.
 - The ncdu runner propagates errors into `ScanResult.Error` and sets `Status = "error"`. The browser shows the error message.
+- Alert channel failures are stored per-event in `alert_events.channels_json`; retries are bounded and do not crash the process.
 - HTTP handler errors return JSON `{"error": "..."}` with an appropriate status code.
 - Fatal errors (e.g., failure to bind the listen address) call `log.Fatalf` and exit.

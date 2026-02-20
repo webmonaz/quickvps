@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"quickvps/internal/alerts"
 	"quickvps/internal/auth"
 	"quickvps/internal/metrics"
 	"quickvps/internal/ncdu"
@@ -65,7 +66,21 @@ func main() {
 	var (
 		authStore    *auth.Store
 		sessionStore *auth.SessionManager
+		alertStore   *alerts.Store
+		alertService *alerts.Service
 	)
+
+	as, err := alerts.NewStore(*dbPath)
+	if err != nil {
+		log.Fatalf("failed to initialize alert store: %v", err)
+	}
+	alertStore = as
+	defer alertStore.Close() //nolint:errcheck
+
+	alertService, err = alerts.NewService(alertStore, alerts.NewNotifier(), strings.TrimSpace(os.Getenv("QUICKVPS_ALERTS_KEY")))
+	if err != nil {
+		log.Fatalf("failed to initialize alert service: %v", err)
+	}
 
 	if *authEnabled {
 		if bootstrapPassword == "" {
@@ -91,6 +106,7 @@ func main() {
 	// Start background goroutines
 	go collector.Run(ctx)
 	go hub.Run(ctx)
+	go alertService.Run(ctx, collector.Subscribe())
 
 	// Bridge: collector → hub (broadcast Snapshot as JSON)
 	go func() {
@@ -109,7 +125,7 @@ func main() {
 		}
 	}()
 
-	srv := server.New(collector, hub, runner, !*authEnabled, authStore, sessionStore, webFS)
+	srv := server.New(collector, hub, runner, alertService, !*authEnabled, authStore, sessionStore, webFS)
 
 	httpServer := &http.Server{
 		Addr:         *addr,
